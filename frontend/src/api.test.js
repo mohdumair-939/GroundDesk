@@ -1,12 +1,15 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { getHealth, listTickets, login, register } from './api'
+import { createTicket, getHealth, listTickets, login, register, setApiBases } from './api'
 
 const json = (status, body) => ({ ok: status < 400, status, json: async () => body })
 
 afterEach(() => {
   vi.unstubAllGlobals()
   vi.useRealTimers()
+  setApiBases(['http://localhost:8010'])
 })
+
+const ticket = { title: 'VPN down', description: 'The VPN times out every time.', category: 'Network' }
 
 describe('API error handling', () => {
   it('reports a network failure (no HTTP response) as status 0, naming the server', async () => {
@@ -63,5 +66,47 @@ describe('API error handling', () => {
     vi.stubGlobal('fetch', fetch)
     await register('N', 'n@example.com', 'secret123').catch(() => {})
     expect(fetch).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('direct route with same-site proxy fallback', () => {
+  const DIRECT = 'https://api.example.onrender.com'
+
+  it('falls back to /api when the direct call is blocked, and keeps using it', async () => {
+    setApiBases([DIRECT, '/api'])
+    const fetch = vi.fn(async (url) => {
+      if (String(url).startsWith(DIRECT)) throw new TypeError('Failed to fetch') // e.g. blocked by an extension
+      return json(201, { id: 1 })
+    })
+    vi.stubGlobal('fetch', fetch)
+    await expect(createTicket(ticket)).resolves.toEqual({ id: 1 })
+    expect(String(fetch.mock.calls[1][0])).toMatch(/\/api\/tickets$/)
+
+    await createTicket(ticket)
+    expect(fetch).toHaveBeenCalledTimes(3) // the second request went straight to /api
+    expect(String(fetch.mock.calls[2][0])).toMatch(/\/api\/tickets$/)
+  })
+
+  it('does not resend a create through the proxy after a slow failure (it may have been processed)', async () => {
+    setApiBases([DIRECT, '/api'])
+    let now = 0
+    vi.spyOn(Date, 'now').mockImplementation(() => now)
+    const fetch = vi.fn(async () => {
+      now += 20_000 // the connection hung for 20 s before dropping
+      throw new TypeError('Failed to fetch')
+    })
+    vi.stubGlobal('fetch', fetch)
+    const err = await createTicket(ticket).catch((e) => e)
+    expect(err.status).toBe(0)
+    expect(fetch).toHaveBeenCalledTimes(1)
+    vi.restoreAllMocks()
+  })
+
+  it('uses the direct route when it works', async () => {
+    setApiBases([DIRECT, '/api'])
+    const fetch = vi.fn().mockResolvedValue(json(200, { status: 'ok' }))
+    vi.stubGlobal('fetch', fetch)
+    await getHealth()
+    expect(String(fetch.mock.calls[0][0])).toBe(`${DIRECT}/health`)
   })
 })

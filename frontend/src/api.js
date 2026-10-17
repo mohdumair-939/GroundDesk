@@ -1,11 +1,17 @@
-// Production builds call the API through the same site: vercel.json forwards /api/* to the Render
-// backend. The browser then never contacts onrender.com directly, so there is no CORS to get
-// wrong and nothing for ad/tracker blockers or network filters to block.
-// VITE_API_URL is only for local development (default http://localhost:8010).
-export const API_URL = import.meta.env.PROD
-  ? '/api'
-  : (import.meta.env.VITE_API_URL || 'http://localhost:8010').replace(/\/$/, '')
+// Where the API lives. In production the browser tries the Render backend directly first
+// (VITE_API_URL) and falls back to /api on the same site, which vercel.json forwards to Render.
+// The fallback rescues browsers or networks that block *.onrender.com; the direct path stays
+// primary because it proved more reliable than the proxy hop. Local dev uses only VITE_API_URL.
+const DIRECT = (import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '' : 'http://localhost:8010')).replace(/\/$/, '')
+const PROXY = '/api'
 const ORIGIN = globalThis.location?.origin ?? 'http://localhost'
+let bases = import.meta.env.PROD ? [DIRECT, PROXY].filter(Boolean) : [DIRECT]
+export const API_URL = bases[0]
+
+// For tests: set the list of API base URLs to try, in order.
+export function setApiBases(list) {
+  bases = [...list]
+}
 
 export class ApiError extends Error {
   constructor(message, status, fieldErrors = {}) {
@@ -34,9 +40,11 @@ function parseFieldErrors(detail) {
   return errors
 }
 
-const API_HOST = new URL(API_URL, ORIGIN).host
 const TIMEOUT_MS = 90_000 // a sleeping free-tier server can take ~1 minute to start
 const RETRY_DELAYS_MS = [3_000, 8_000]
+// A network failure faster than this means the request never reached the server (blocked,
+// DNS, refused), so trying the other route is safe even for requests that create things.
+const FAST_FAILURE_MS = 4_000
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
@@ -55,44 +63,68 @@ function httpErrorMessage(status, detail) {
 async function attempt(url, init) {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS)
+  const started = Date.now()
   try {
     return await fetch(url, { ...init, signal: controller.signal })
   } catch (err) {
-    const timedOut = err.name === 'AbortError'
-    throw new ApiError(
-      timedOut
-        ? `The server at ${API_HOST} did not answer within ${TIMEOUT_MS / 1000} seconds. Please try again.`
-        : `Cannot connect to the server at ${API_HOST}. It may be starting up (this can take up to a minute) — please try again.`,
+    const host = new URL(url).host
+    const error = new ApiError(
+      err.name === 'AbortError'
+        ? `The server at ${host} did not answer within ${TIMEOUT_MS / 1000} seconds. Please try again.`
+        : `Cannot connect to the server at ${host}. It may be starting up (this can take up to a minute) — please try again.`,
       0,
     )
+    error.fast = Date.now() - started < FAST_FAILURE_MS
+    throw error
   } finally {
     clearTimeout(timer)
   }
 }
 
+// Tries each API route in order. Moves on to the next route after a network failure when that
+// is safe (a repeatable request, or a failure so fast the request cannot have been processed),
+// and remembers a route that worked so later requests start there.
+async function fetchAnyRoute(path, search, init, repeatable) {
+  let lastError
+  for (const base of [...bases]) {
+    const url = new URL(`${base}${path}`, ORIGIN)
+    url.search = search
+    try {
+      const response = await attempt(url, init)
+      if (base !== bases[0]) bases = [base, ...bases.filter((b) => b !== base)]
+      return response
+    } catch (err) {
+      lastError = err
+      if (!repeatable && !err.fast) break
+    }
+  }
+  throw lastError
+}
+
 // retry: repeat after a network failure. Only for requests that are safe to repeat
 // (reads and sign-in); a repeated "create" could otherwise run twice.
 async function request(path, { method = 'GET', body, params, retry = method === 'GET' } = {}) {
-  const url = new URL(`${API_URL}${path}`, ORIGIN)
+  const search = new URLSearchParams()
   for (const [key, value] of Object.entries(params || {})) {
-    if (value !== undefined && value !== null && value !== '') url.searchParams.set(key, value)
+    if (value !== undefined && value !== null && value !== '') search.set(key, value)
   }
   const headers = {}
   if (body) headers['Content-Type'] = 'application/json'
   if (authToken) headers.Authorization = `Bearer ${authToken}`
   const init = { method, headers, body: body ? JSON.stringify(body) : undefined }
+  const repeatable = retry || method === 'GET'
 
   let response
   for (let i = 0; ; i++) {
     const last = !retry || i >= RETRY_DELAYS_MS.length
     try {
-      response = await attempt(url, init)
+      response = await fetchAnyRoute(path, search.toString(), init, repeatable)
     } catch (err) {
       if (last) throw err
       await sleep(RETRY_DELAYS_MS[i])
       continue
     }
-    // 502/503/504: the proxy reached Render but the backend is still starting or redeploying.
+    // 502/503/504: a proxy reached Render but the backend is still starting or redeploying.
     if (last || ![502, 503, 504].includes(response.status)) break
     await sleep(RETRY_DELAYS_MS[i])
   }
