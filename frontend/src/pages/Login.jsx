@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router'
 import { useAuth } from '../auth'
+import PasswordInput from '../components/PasswordInput'
+import ServerStatus from '../components/ServerStatus'
 import { ErrorBox } from '../components/States'
 import { ROLE_LABELS } from '../constants'
 
@@ -70,6 +72,9 @@ export default function Login() {
         <div className="text-center">
           <h1 className="text-2xl font-semibold text-slate-900">Smart Help Desk</h1>
           <p className="mt-1 text-sm text-slate-500">IT support ticketing with AI troubleshooting suggestions</p>
+          <div className="mt-3">
+            <ServerStatus />
+          </div>
         </div>
 
         <div className="mt-8 grid gap-3 sm:grid-cols-3" role="radiogroup" aria-label="Choose how to sign in">
@@ -111,17 +116,7 @@ export default function Login() {
               className="mt-1 block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
             />
           </label>
-          <label className="block">
-            <span className="text-sm font-medium text-slate-700">Password</span>
-            <input
-              type="password"
-              required
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="mt-1 block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
-            />
-          </label>
+          <PasswordInput label="Password" required value={password} onChange={(e) => setPassword(e.target.value)} />
           <ErrorBox error={error} />
           <button
             type="submit"

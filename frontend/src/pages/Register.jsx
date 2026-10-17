@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { useAuth } from '../auth'
+import PasswordInput from '../components/PasswordInput'
+import ServerStatus from '../components/ServerStatus'
 import { ErrorBox } from '../components/States'
 
 const inputClass = 'mt-1 block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm'
@@ -45,16 +47,23 @@ export default function Register() {
           <span className="text-sm font-medium text-slate-700">Email</span>
           <input type="email" required value={form.email} onChange={set('email')} className={inputClass} autoComplete="email" />
         </label>
-        <label className="block">
-          <span className="text-sm font-medium text-slate-700">Password</span>
-          <input type="password" required value={form.password} onChange={set('password')} className={inputClass} autoComplete="new-password" />
-          <span className="mt-1 block text-xs text-slate-400">At least 8 characters.</span>
-        </label>
-        <label className="block">
-          <span className="text-sm font-medium text-slate-700">Confirm password</span>
-          <input type="password" required value={form.confirm} onChange={set('confirm')} className={inputClass} autoComplete="new-password" />
-        </label>
+        <PasswordInput
+          label="Password"
+          required
+          value={form.password}
+          onChange={set('password')}
+          autoComplete="new-password"
+          hint="At least 8 characters."
+        />
+        <PasswordInput
+          label="Confirm password"
+          required
+          value={form.confirm}
+          onChange={set('confirm')}
+          autoComplete="new-password"
+        />
         <ErrorBox error={error} />
+        <ServerStatus />
         <button
           type="submit"
           disabled={busy}

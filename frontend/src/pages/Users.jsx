@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { listUsers, updateUser } from '../api'
 import { useAuth } from '../auth'
+import PasswordInput from '../components/PasswordInput'
 import { Empty, ErrorBox, Loading } from '../components/States'
 import { ROLE_LABELS, formatDate } from '../constants'
 import { useAsync } from '../useAsync'
@@ -15,19 +16,19 @@ function PasswordReset({ onSave, onCancel, busy }) {
         e.preventDefault()
         onSave(password)
       }}
-      className="mt-2 flex flex-wrap items-center gap-2"
+      className="mt-2 flex flex-wrap items-end gap-2"
     >
-      <input
-        type="password"
-        minLength={8}
-        required
-        autoComplete="new-password"
-        placeholder="New password (8+ characters)"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        className="min-w-0 flex-1 rounded-md border border-slate-300 px-2 py-1 text-sm"
-        aria-label="New password"
-      />
+      <div className="min-w-0 flex-1">
+        <PasswordInput
+          label="New password"
+          minLength={8}
+          required
+          autoComplete="new-password"
+          placeholder="8+ characters"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+      </div>
       <button disabled={busy || password.length < 8} className="rounded-md bg-slate-900 px-3 py-1 text-sm font-medium text-white disabled:opacity-60">
         Save
       </button>

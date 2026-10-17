@@ -115,6 +115,17 @@ Not in the master plan; the owner asked for it before Sprint 4.
 - **Incident (2026-10-17):** a Blueprint sync created a second Render service (`smart-helpdesk-api-yxb6`) that deployed the new code **without** `JWT_SECRET`/`DEMO_PASSWORD`, and seeded the shared prod DB with the then-default password `Demo@1234`. The live admin accepted it. Fixes: `DEMO_PASSWORD` no longer has a default (the seed skips accounts without it); `python -m app.seed --reset-demo-passwords` rotates all 12 seeded accounts. Keep only the `w2mf` service.
 - **Deploy needs `JWT_SECRET` and `DEMO_PASSWORD` set in Render** (added to `render.yaml`; an existing Blueprint service may need them added by hand). Old prod tickets HD-0001…0006 have no owner, so only the admin sees them.
 
+## Production login fix (2026-10-18)
+
+- **Symptom:** the live site showed "Could not reach the server" on registration and sign-in. The API itself answered correctly (health 200, CORS allowed, login 401/200), and a clean Chrome profile on the same PC could sign in. The failure was therefore in the browser's direct cross-site call to `*.onrender.com`, which blockers, cached old builds and the Render restart windows all break, and which the app reported with one vague message.
+- **Fix:** the frontend now calls `/api/*` on its own origin, and `frontend/vercel.json` forwards it to `smart-helpdesk-api-w2mf`. The browser never contacts onrender.com, so there is no CORS and nothing for a blocker to block. `VITE_API_URL` is now used only in local dev.
+- **Errors:** network failures, timeouts, 502–504 (backend starting) and other HTTP errors get distinct messages. Reads and sign-in retry automatically while the backend wakes; registration never retries, so it can't create an account twice. The login and register pages show the server status.
+- **Backend bug fixed:** unhandled exceptions returned plain-text 500s *without* CORS headers (seen by browsers as network failures). They now return JSON 500 inside the CORS layer (`tests/test_errors.py`).
+- **Password visibility:** an accessible eye/eye-off toggle on login, registration and the admin password reset.
+- **Demo passwords:** all 12 seeded accounts were rotated from the leaked `Demo@1234` to `DEMO_PASSWORD` with `python -m app.seed --reset-demo-passwords`. Live: `Demo@1234` → 401; the configured password works for all three roles.
+- Frontend tests added (`npm test`, Vitest): 7 tests for the API error handling. Backend: 57 tests pass.
+- `docs/DEMO_DATA_AND_TESTING_GUIDE.md`: accounts, staff, actual tickets, KB, features, role walkthroughs and limits.
+
 ## Remaining issues / notes
 
 - Local ports 8000 and 5173 are used by other Docker/WSL apps on this machine, so the backend runs on **8010** locally. If 5173 is busy, run the frontend on another port and add that origin to `CORS_ORIGINS`.
