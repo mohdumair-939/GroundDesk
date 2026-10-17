@@ -138,3 +138,28 @@ def test_disabled_account_token_stops_working(client, admin, login):
     uid = next(u["id"] for u in admin.get("/users").json() if u["email"] == "ravi.kumar@helpdesk.local")
     admin.patch(f"/users/{uid}", json={"active": False})
     assert ravi.get("/tickets").status_code == 401
+
+
+def test_reset_demo_passwords(client, monkeypatch):
+    from app import seed as seed_module
+    from app.database import SessionLocal
+
+    monkeypatch.setattr(seed_module.settings, "demo_password", "Rotated#2026")
+    with SessionLocal() as db:
+        assert seed_module.reset_demo_passwords(db) == 12
+    assert login_status(client, "admin@helpdesk.local", "admin").status_code == 401  # old password rejected
+    assert login_status(client, "admin@helpdesk.local", "admin", "Rotated#2026").status_code == 200
+
+    monkeypatch.setattr(seed_module.settings, "demo_password", PASSWORD)  # restore for later tests
+    with SessionLocal() as db:
+        seed_module.reset_demo_passwords(db)
+
+
+def test_seed_skips_accounts_without_a_demo_password(monkeypatch):
+    from app import seed as seed_module
+    from app.database import SessionLocal
+
+    monkeypatch.setattr(seed_module.settings, "demo_password", "")
+    monkeypatch.setattr(seed_module, "EMPLOYEES", [("New Person", "new.person@helpdesk.local")])
+    with SessionLocal() as db:
+        assert seed_module.seed(db)["users"] == 0

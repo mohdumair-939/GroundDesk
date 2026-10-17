@@ -39,8 +39,9 @@ class Settings(BaseSettings):
     # Login tokens. Set JWT_SECRET to a long random value in production.
     jwt_secret: str = ""
     token_hours: int = 12
-    # Password given to the seeded demo accounts when they are first created.
-    demo_password: str = "Demo@1234"
+    # Password given to the seeded demo accounts when they are first created. No default:
+    # without it the seed skips creating accounts, so a public default password never goes live.
+    demo_password: str = ""
 
     @property
     def cors_origin_list(self) -> list[str]:

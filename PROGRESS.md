@@ -112,6 +112,7 @@ Not in the master plan; the owner asked for it before Sprint 4.
 - **Audit:** every timeline entry records who made it (`changed_by`; System for AI/routing). Notes are timeline entries without a status change.
 - Tickets a user may not see return 404. New status `PENDING_APPROVAL`; migration `cf3e1f3a003f` adds `users`, `tickets.created_by_id` and `ticket_status_history.changed_by_id`.
 - Verified: **54 backend tests pass** (new `tests/test_auth.py`; scenarios 1–9 updated for roles) and a local run against a separate `neondb_dev` database: employee raises → AI guard → escalate → technician starts, marks solved → employee approves → CLOSED. All three role views were screenshotted.
+- **Incident (2026-10-17):** a Blueprint sync created a second Render service (`smart-helpdesk-api-yxb6`) that deployed the new code **without** `JWT_SECRET`/`DEMO_PASSWORD`, and seeded the shared prod DB with the then-default password `Demo@1234`. The live admin accepted it. Fixes: `DEMO_PASSWORD` no longer has a default (the seed skips accounts without it); `python -m app.seed --reset-demo-passwords` rotates all 12 seeded accounts. Keep only the `w2mf` service.
 - **Deploy needs `JWT_SECRET` and `DEMO_PASSWORD` set in Render** (added to `render.yaml`; an existing Blueprint service may need them added by hand). Old prod tickets HD-0001…0006 have no owner, so only the admin sees them.
 
 ## Remaining issues / notes
