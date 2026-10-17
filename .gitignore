@@ -1,0 +1,40 @@
+# --- Secrets and local environment ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# --- Python (backend) ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.egg-info/
+
+# --- Node (frontend) ---
+node_modules/
+dist/
+build/
+.vite/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# --- Deployment tooling ---
+.vercel/
+
+# --- Editors and OS ---
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini
