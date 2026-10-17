@@ -8,6 +8,7 @@ import hashlib
 import logging
 import math
 import re
+import time
 
 import httpx
 
@@ -102,6 +103,12 @@ def _normalize(vec: list[float]) -> list[float]:
 # ---------------------------------------------------------------- generation
 
 
+# A provider that just failed (quota exhausted, timeout) is skipped for a while, so each new
+# ticket does not first wait for the same failure before falling back.
+COOLDOWN_SECONDS = 600
+_cooling_until: dict[str, float] = {}
+
+
 def generate(system: str, prompt: str) -> tuple[str, str]:
     """Return (text, provider_used). Falls back to the other hosted provider on failure."""
     primary = settings.llm_provider
@@ -109,18 +116,23 @@ def generate(system: str, prompt: str) -> tuple[str, str]:
         return _mock_generate(prompt), "mock"
 
     order = [primary] + [p for p in ("gemini", "groq") if p != primary]
+    order = [p for p in order if (settings.gemini_api_key if p == "gemini" else settings.groq_api_key)]
+    now = time.monotonic()
+    ready = [p for p in order if _cooling_until.get(p, 0) <= now]
+    # Cooling providers go last rather than being dropped: if every provider is cooling, still try.
+    order = ready + [p for p in order if p not in ready]
+
     errors = []
     for provider in order:
-        key = settings.gemini_api_key if provider == "gemini" else settings.groq_api_key
-        if not key:
-            continue
         try:
             text = _gemini_generate(system, prompt) if provider == "gemini" else _groq_generate(system, prompt)
             if text.strip():
+                _cooling_until.pop(provider, None)
                 return text.strip(), provider
             errors.append(f"{provider}: empty response")
         except Exception as exc:  # try the next provider
-            logger.warning("LLM provider %s failed: %s", provider, exc)
+            logger.warning("LLM provider %s failed; skipping it for %ss: %s", provider, COOLDOWN_SECONDS, exc)
+            _cooling_until[provider] = time.monotonic() + COOLDOWN_SECONDS
             errors.append(f"{provider}: {exc}")
     raise LLMError("All LLM providers failed: " + "; ".join(errors) if errors else "No LLM API key configured")
 
