@@ -130,6 +130,19 @@ Not in the master plan; the owner asked for it before Sprint 4.
 - Frontend tests added (`npm test`, Vitest): 7 tests for the API error handling. Backend: 57 tests pass.
 - `docs/DEMO_DATA_AND_TESTING_GUIDE.md`: accounts, staff, actual tickets, KB, features, role walkthroughs and limits.
 
+## Sprint 4 — Integration, deploy and submission (2026-10-18)
+
+| # | Sub-sprint | Status |
+|---|---|---|
+| 4.1 | End-to-end check of both paths | **Done** — live workflow 33/33 (`docs/TEST_REPORT.md`) |
+| 4.2 | Dashboard | **Done** — admin home: totals, AI outcome (resolved vs escalated vs waiting), by status (bars link to the filtered list), per department, per category, average time to close. `GET /stats` (admin only) |
+| 4.3 | Production | **Done** — Render `w2mf` + Vercel; migrations, seed and ingest on start; CORS locked to the Vercel origin; `/health` shows the deployed commit |
+| 4.4 | Bug fixes, loading/error/empty states | **Done** — see the production login fix above |
+| 4.5 | README, architecture diagram, test report, known limitations | **Done** — `README.md` (Mermaid architecture), `docs/TEST_REPORT.md`, `docs/DEMO_DATA_AND_TESTING_GUIDE.md`. Screenshots wait for the test-ticket cleanup |
+| 4.6 | Report, slides, demo script, backup video | Demo script **done** (`docs/DEMO_SCRIPT.md`). Report and slides need the owner's college details; the backup video must be recorded by the owner |
+
+- Tests: 64 backend, 10 frontend, all passing.
+
 ## Remaining issues / notes
 
 - Local ports 8000 and 5173 are used by other Docker/WSL apps on this machine, so the backend runs on **8010** locally. If 5173 is busy, run the frontend on another port and add that origin to `CORS_ORIGINS`.

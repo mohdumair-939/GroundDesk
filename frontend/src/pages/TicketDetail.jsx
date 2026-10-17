@@ -93,7 +93,7 @@ export default function TicketDetail() {
 
   return (
     <section className="space-y-5">
-      <Link to="/" className="text-sm text-slate-500 hover:text-slate-800">
+      <Link to={isAdmin ? '/tickets' : '/'} className="text-sm text-slate-500 hover:text-slate-800">
         ← Back
       </Link>
 

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link } from 'react-router'
+import { Link, useSearchParams } from 'react-router'
 import { listTickets } from '../api'
 import { useAuth } from '../auth'
 import { PriorityBadge, StatusBadge } from '../components/Badges'
@@ -12,7 +12,8 @@ const selectClass = 'rounded-md border border-slate-300 bg-white px-2 py-1.5 tex
 export default function TicketList() {
   const { user } = useAuth()
   const isAdmin = user.role === 'admin'
-  const [filters, setFilters] = useState({ status: '', category: '', q: '' })
+  const [searchParams] = useSearchParams()
+  const [filters, setFilters] = useState({ status: searchParams.get('status') || '', category: '', q: '' })
   const { data: tickets, error, loading, reload } = useAsync(
     () => listTickets(filters),
     [filters.status, filters.category, filters.q],

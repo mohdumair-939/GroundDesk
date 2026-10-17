@@ -9,7 +9,7 @@ from fastapi.responses import JSONResponse
 
 from app.config import settings
 from app.database import check_database
-from app.routers import auth, staff, tickets, users
+from app.routers import auth, staff, stats, tickets, users
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +40,7 @@ app.include_router(auth.router)
 app.include_router(tickets.router)
 app.include_router(staff.router)
 app.include_router(users.router)
+app.include_router(stats.router)
 
 
 @app.get("/health")

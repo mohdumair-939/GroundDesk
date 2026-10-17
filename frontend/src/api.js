@@ -160,5 +160,6 @@ export const adminUpdateTicket = (id, changes) => request(`/tickets/${id}`, { me
 export const reassignTicket = (id, technicianId, note) =>
   request(`/tickets/${id}/reassign`, { method: 'POST', body: { technician_id: Number(technicianId), note: note || null } })
 export const reopenTicket = (id, note) => request(`/tickets/${id}/reopen`, { method: 'POST', body: { note } })
+export const getStats = () => request('/stats')
 export const listUsers = (params) => request('/users', { params })
 export const updateUser = (id, changes) => request(`/users/${id}`, { method: 'PATCH', body: changes })

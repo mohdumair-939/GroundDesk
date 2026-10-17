@@ -1,6 +1,7 @@
 import { Navigate, NavLink, Route, Routes } from 'react-router'
 import { useAuth } from './auth'
 import { ROLE_LABELS } from './constants'
+import Dashboard from './pages/Dashboard'
 import Login from './pages/Login'
 import NewTicket from './pages/NewTicket'
 import Register from './pages/Register'
@@ -19,7 +20,8 @@ const NAV = {
   ],
   technician: [['/', 'My queue']],
   admin: [
-    ['/', 'All tickets'],
+    ['/', 'Dashboard'],
+    ['/tickets', 'All tickets'],
     ['/users', 'Users'],
   ],
 }
@@ -33,7 +35,11 @@ const ROLE_CHIP = {
 function RoleRoutes({ role }) {
   return (
     <Routes>
-      <Route path="/" element={role === 'technician' ? <TechnicianView /> : <TicketList />} />
+      <Route
+        path="/"
+        element={role === 'technician' ? <TechnicianView /> : role === 'admin' ? <Dashboard /> : <TicketList />}
+      />
+      {role === 'admin' && <Route path="/tickets" element={<TicketList />} />}
       <Route path="/tickets/:id" element={<TicketDetail />} />
       {role === 'employee' && <Route path="/new" element={<NewTicket />} />}
       {role === 'admin' && <Route path="/users" element={<Users />} />}
