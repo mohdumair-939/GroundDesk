@@ -36,9 +36,16 @@ class Settings(BaseSettings):
     confidence_high_margin: float = 0.06
     confidence_medium_margin: float = 0.03
 
+    # Login tokens. Set JWT_SECRET to a long random value in production.
+    jwt_secret: str = ""
+    token_hours: int = 12
+    # Password given to the seeded demo accounts when they are first created.
+    demo_password: str = "Demo@1234"
+
     @property
     def cors_origin_list(self) -> list[str]:
-        return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+        # Browsers send the Origin header without a trailing slash, so drop any pasted one.
+        return [o.strip().rstrip("/") for o in self.cors_origins.split(",") if o.strip()]
 
     @property
     def sqlalchemy_database_url(self) -> str:

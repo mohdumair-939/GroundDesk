@@ -10,7 +10,7 @@ Source of truth: `docs/Smart Help Desk Ticketing System — Master Plan.pdf`
 | 0.2 | FastAPI app with /health and .env config | /docs opens locally | **Done, verified** |
 | 0.3 | Neon/Supabase DB, pgvector, SQLAlchemy connection | Health reports DB connected | **Done, verified** on Neon (2026-10-17) |
 | 0.4 | React + Vite + Tailwind, API URL from env | Frontend calls /health | **Done, verified** |
-| 0.5 | Deploy backend to Render, frontend to Vercel, CORS | Live URLs work end to end | Config done. **Not deployed** (needs push + accounts) |
+| 0.5 | Deploy backend to Render, frontend to Vercel, CORS | Live URLs work end to end | **Done, verified** 2026-10-17 — https://it-help-desk-rag.vercel.app → https://smart-helpdesk-api-w2mf.onrender.com |
 
 ### 0.1 — Repository and structure (2026-10-16)
 - `git init -b main`. Created `/backend`, `/frontend` and `/kb` (`kb/.gitkeep` for now). `/docs` holds the master plan, unchanged.
@@ -95,7 +95,24 @@ Source of truth: `docs/Smart Help Desk Ticketing System — Master Plan.pdf`
 - New endpoints: `GET /departments`, `GET /technicians` (with open-ticket counts), and `GET /tickets?technician_id=&department_id=`.
 - Render start command: `alembic upgrade head && python -m app.seed && (python -m app.ingest || echo …) && uvicorn …`.
 - **Tests: 35 pass.** Run with `.venv\Scripts\python -m pytest` from `backend/`. Two sessions sharing the default `<db>_test` database break each other (`drop_all` at start), so set `TEST_DB_NAME` (must contain "test") for a parallel run.
-- The prod DB holds demo tickets HD-0001…HD-0004 from manual checks. Clear them before the review.
+- The prod DB holds demo tickets HD-0001…HD-0006 from manual and live checks. Clear them before the review.
+- Live check (2026-10-17): on Render, the VPN ticket got Gemini, High confidence (0.77) → Yes → RESOLVED, and the fan ticket hit the guard (0.64) → No → Hardware Support / Ananya Das (least loaded). Vercel pages render live data, and CORS allows only the Vercel origin.
+- `CORS_ORIGINS` entries now ignore a trailing `/`.
+
+## Added before Sprint 4 — Role-based logins (2026-10-17, owner request)
+
+Not in the master plan; the owner asked for it before Sprint 4.
+
+- **Login page with three separate options:** Login as Employee, Technician, or Admin. The chosen option is sent with the credentials, and an account can only sign in through its own role's option (403 with "Please use the X login" otherwise).
+- **One role per email:** `users.email` is unique across all roles, and registration checks for duplicates (case-insensitive) before anything else. Employees self-register; technician and admin accounts are seeded (`python -m app.seed`, password from `DEMO_PASSWORD`, set only on first creation).
+- **Auth:** stdlib scrypt password hashes; JWT bearer tokens (`JWT_SECRET`, 12 h) that are valid only for the issuing role and only while the account is active.
+- **Employee:** raises tickets (requester taken from the account), sees only their own tickets, answers the AI suggestion, and **approves or rejects closure** (rejecting needs a reason → back to IN_PROGRESS).
+- **Technician:** "My queue" shows only their assigned tickets (To do / In progress / Waiting for approval / Closed): Start work → **Mark solved** with a resolution note → `PENDING_APPROVAL`. They can never close a ticket themselves.
+- **Admin:** sees all tickets; changes priority/category, reassigns to any technician, force-closes (reason required), reopens RESOLVED/CLOSED tickets, adds notes, and manages users (enable/disable, reset password).
+- **Audit:** every timeline entry records who made it (`changed_by`; System for AI/routing). Notes are timeline entries without a status change.
+- Tickets a user may not see return 404. New status `PENDING_APPROVAL`; migration `cf3e1f3a003f` adds `users`, `tickets.created_by_id` and `ticket_status_history.changed_by_id`.
+- Verified: **54 backend tests pass** (new `tests/test_auth.py`; scenarios 1–9 updated for roles) and a local run against a separate `neondb_dev` database: employee raises → AI guard → escalate → technician starts, marks solved → employee approves → CLOSED. All three role views were screenshotted.
+- **Deploy needs `JWT_SECRET` and `DEMO_PASSWORD` set in Render** (added to `render.yaml`; an existing Blueprint service may need them added by hand). Old prod tickets HD-0001…0006 have no owner, so only the admin sees them.
 
 ## Remaining issues / notes
 
@@ -114,4 +131,4 @@ Source of truth: `docs/Smart Help Desk Ticketing System — Master Plan.pdf`
 
 ## Next approved task
 
-Sprints 1–3 are built and tested locally (2026-10-17). Nothing after the Sprint 0 commit has been committed yet. Next: commit/push (when the owner asks), deploy (0.5, needs the owner's Render and Vercel accounts), then Sprint 4 (dashboard, polish, docs, demo prep).
+Sprints 1–3 are built and tested locally (2026-10-17). Nothing after the Sprint 0 commit has been committed yet. Sprint 0–3 are deployed. Next: Sprint 4 (dashboard, polish, docs, demo prep).

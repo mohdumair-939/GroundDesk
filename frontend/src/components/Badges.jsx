@@ -7,6 +7,7 @@ const STATUS_STYLES = {
   ESCALATED: 'bg-amber-50 text-amber-800 ring-amber-200',
   ASSIGNED: 'bg-orange-50 text-orange-700 ring-orange-200',
   IN_PROGRESS: 'bg-blue-50 text-blue-700 ring-blue-200',
+  PENDING_APPROVAL: 'bg-teal-50 text-teal-700 ring-teal-200',
   CLOSED: 'bg-slate-100 text-slate-600 ring-slate-200',
 }
 

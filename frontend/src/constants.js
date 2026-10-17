@@ -1,5 +1,6 @@
 export const CATEGORIES = ['Network', 'Software', 'Hardware', 'Account/Access', 'Email', 'Other']
 export const PRIORITIES = ['Low', 'Medium', 'High']
+export const ROLE_LABELS = { employee: 'Employee', technician: 'Technician', admin: 'Admin' }
 
 export const STATUS_LABELS = {
   OPEN: 'Open',
@@ -8,6 +9,7 @@ export const STATUS_LABELS = {
   ESCALATED: 'Escalated',
   ASSIGNED: 'Assigned',
   IN_PROGRESS: 'In progress',
+  PENDING_APPROVAL: 'Awaiting approval',
   CLOSED: 'Closed',
 }
 export const STATUSES = Object.keys(STATUS_LABELS)

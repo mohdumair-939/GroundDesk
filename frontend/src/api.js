@@ -9,6 +9,14 @@ export class ApiError extends Error {
   }
 }
 
+// The signed-in user's token, set by AuthProvider. A 401 calls onUnauthorized (sign out).
+let authToken = null
+let onUnauthorized = () => {}
+export function setAuth(token, handler) {
+  authToken = token
+  if (handler) onUnauthorized = handler
+}
+
 // Turns FastAPI's 422 detail list into { field: message }.
 function parseFieldErrors(detail) {
   if (!Array.isArray(detail)) return {}
@@ -28,16 +36,16 @@ async function request(path, { method = 'GET', body, params } = {}) {
 
   let response
   try {
-    response = await fetch(url, {
-      method,
-      headers: body ? { 'Content-Type': 'application/json' } : undefined,
-      body: body ? JSON.stringify(body) : undefined,
-    })
+    const headers = {}
+    if (body) headers['Content-Type'] = 'application/json'
+    if (authToken) headers.Authorization = `Bearer ${authToken}`
+    response = await fetch(url, { method, headers, body: body ? JSON.stringify(body) : undefined })
   } catch {
     throw new ApiError('Could not reach the server. It may be waking up — try again in a moment.', 0)
   }
 
   const data = await response.json().catch(() => null)
+  if (response.status === 401 && authToken) onUnauthorized()
   if (!response.ok) {
     const detail = data?.detail
     const message = typeof detail === 'string' ? detail : `Request failed (HTTP ${response.status})`
@@ -57,3 +65,15 @@ export const sendFeedback = (id, resolved, comment) =>
   request(`/tickets/${id}/feedback`, { method: 'POST', body: { resolved, comment: comment || null } })
 export const listTechnicians = () => request('/technicians')
 export const listDepartments = () => request('/departments')
+export const login = (email, password, role) => request('/auth/login', { method: 'POST', body: { email, password, role } })
+export const register = (name, email, password) => request('/auth/register', { method: 'POST', body: { name, email, password } })
+export const getMe = () => request('/auth/me')
+export const sendClosure = (id, approved, comment) =>
+  request(`/tickets/${id}/closure`, { method: 'POST', body: { approved, comment: comment || null } })
+export const addNote = (id, note) => request(`/tickets/${id}/notes`, { method: 'POST', body: { note } })
+export const adminUpdateTicket = (id, changes) => request(`/tickets/${id}`, { method: 'PATCH', body: changes })
+export const reassignTicket = (id, technicianId, note) =>
+  request(`/tickets/${id}/reassign`, { method: 'POST', body: { technician_id: Number(technicianId), note: note || null } })
+export const reopenTicket = (id, note) => request(`/tickets/${id}/reopen`, { method: 'POST', body: { note } })
+export const listUsers = (params) => request('/users', { params })
+export const updateUser = (id, changes) => request(`/users/${id}`, { method: 'PATCH', body: changes })

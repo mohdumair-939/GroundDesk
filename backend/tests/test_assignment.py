@@ -1,10 +1,14 @@
 """Test scenarios 7-9: resolved feedback, escalation with rule-based routing, and the
-technician workflow with least-loaded assignment."""
+technician workflow with least-loaded assignment and employee-approved closure."""
 
 import pytest
 
 from app.assignment import choose_department
 from app.models import Category, Ticket
+
+VIKRAM = "vikram.singh@helpdesk.local"
+ARJUN = "arjun.mehta@helpdesk.local"
+PRIYA = "priya.nair@helpdesk.local"
 
 
 def make_ticket(client, **overrides):
@@ -12,8 +16,6 @@ def make_ticket(client, **overrides):
         "title": "Cannot connect to VPN from home",
         "description": "The VPN client times out every time I try to connect from my home Wi-Fi.",
         "category": "Network",
-        "user_name": "Asha Rao",
-        "user_email": "asha.rao@example.com",
         **overrides,
     }
     r = client.post("/tickets", json=payload)
@@ -21,10 +23,16 @@ def make_ticket(client, **overrides):
     return r.json()["id"]
 
 
+def escalate(client, tid):
+    r = client.post(f"/tickets/{tid}/feedback", json={"resolved": False})
+    assert r.status_code == 200, r.text
+    return r.json()
+
+
 # Scenario 7: "Yes, this fixed it" resolves the ticket and records the feedback.
-def test_yes_feedback_resolves(client, kb):
-    tid = make_ticket(client)
-    r = client.post(f"/tickets/{tid}/feedback", json={"resolved": True, "comment": "Restarting the client worked"})
+def test_yes_feedback_resolves(employee, kb):
+    tid = make_ticket(employee)
+    r = employee.post(f"/tickets/{tid}/feedback", json={"resolved": True, "comment": "Restarting the client worked"})
     assert r.status_code == 200
     t = r.json()
     assert t["status"] == "RESOLVED"
@@ -34,20 +42,20 @@ def test_yes_feedback_resolves(client, kb):
     assert "Restarting the client worked" in t["history"][-1]["note"]
 
     # Feedback cannot be given twice.
-    assert client.post(f"/tickets/{tid}/feedback", json={"resolved": False}).status_code == 409
+    assert employee.post(f"/tickets/{tid}/feedback", json={"resolved": False}).status_code == 409
 
 
 # Scenario 8: "No" escalates and routes by category to the right department, with the rule shown.
-def test_no_feedback_escalates_and_assigns_by_category(client, kb):
+def test_no_feedback_escalates_and_assigns_by_category(employee, kb):
     tid = make_ticket(
-        client,
+        employee,
         title="Laptop fan making grinding noise",
         description="The fan in my laptop makes a loud grinding noise and the bottom gets hot.",
         category="Hardware",
     )
-    assert client.get(f"/tickets/{tid}").json()["suggestion"]["answered"] is False
+    assert employee.get(f"/tickets/{tid}").json()["suggestion"]["answered"] is False
 
-    t = client.post(f"/tickets/{tid}/feedback", json={"resolved": False}).json()
+    t = escalate(employee, tid)
     assert t["status"] == "ASSIGNED"
     assert [h["new_status"] for h in t["history"]] == ["OPEN", "SUGGESTION_PROVIDED", "ESCALATED", "ASSIGNED"]
     a = t["assignment"]
@@ -81,7 +89,7 @@ def test_category_rules_cover_every_category_except_other():
             assert route.rule.startswith("Category rule")
 
 
-def test_no_feedback_works_when_ai_unavailable(client, kb, monkeypatch):
+def test_no_feedback_works_when_ai_unavailable(employee, kb, monkeypatch):
     from app import rag
     from app.llm_client import LLMError
 
@@ -89,46 +97,73 @@ def test_no_feedback_works_when_ai_unavailable(client, kb, monkeypatch):
         raise LLMError("down")
 
     monkeypatch.setattr(rag, "generate", boom)
-    tid = make_ticket(client)
-    assert client.get(f"/tickets/{tid}").json()["status"] == "OPEN"
-    assert client.post(f"/tickets/{tid}/feedback", json={"resolved": True}).status_code == 409
-    t = client.post(f"/tickets/{tid}/feedback", json={"resolved": False}).json()
+    tid = make_ticket(employee)
+    assert employee.get(f"/tickets/{tid}").json()["status"] == "OPEN"
+    assert employee.post(f"/tickets/{tid}/feedback", json={"resolved": True}).status_code == 409
+    t = escalate(employee, tid)
     assert t["status"] == "ASSIGNED"
     assert t["assignment"]["department"]["name"] == "Network Support"
 
 
-# Scenario 9: least-loaded technician, then the technician moves the ticket to CLOSED.
-def test_least_loaded_technician_and_technician_flow(client, kb):
-    ids = [make_ticket(client, title=f"Wi-Fi drops in room {n}", category="Network") for n in range(3)]
-    techs = [client.post(f"/tickets/{i}/feedback", json={"resolved": False}).json()["assignment"]["technician"]["name"] for i in ids]
+# Scenario 9: least-loaded technician; technician solves; employee approves or rejects closure.
+def test_least_loaded_technician(employee, admin, kb):
+    ids = [make_ticket(employee, title=f"Wi-Fi drops in room {n}") for n in range(3)]
+    techs = [escalate(employee, i)["assignment"]["technician"]["name"] for i in ids]
     # Two Network technicians: the load alternates, ties go to the lower id.
     assert techs == ["Arjun Mehta", "Priya Nair", "Arjun Mehta"]
 
-    staff = {t["name"]: t for t in client.get("/technicians").json()}
+    staff = {t["name"]: t for t in admin.get("/technicians").json()}
     assert staff["Arjun Mehta"]["open_tickets"] == 2
     assert staff["Priya Nair"]["open_tickets"] == 1
 
-    arjun = staff["Arjun Mehta"]["id"]
-    mine = client.get("/tickets", params={"technician_id": arjun}).json()
-    assert sorted(t["id"] for t in mine) == [ids[0], ids[2]]
-    assert all(t["assignment"]["technician"]["id"] == arjun for t in mine)
 
-    tid = ids[0]
-    assert client.patch(f"/tickets/{tid}/status", json={"status": "CLOSED"}).status_code == 409  # must start first
-    assert client.patch(f"/tickets/{tid}/status", json={"status": "IN_PROGRESS"}).json()["status"] == "IN_PROGRESS"
-    assert client.patch(f"/tickets/{tid}/status", json={"status": "CLOSED"}).json()["status"] == "CLOSED"
+def test_technician_flow_with_closure_approval(employee, login, kb):
+    tid = make_ticket(employee)
+    escalate(employee, tid)
+    arjun = login(ARJUN)
 
-    # A closed ticket no longer counts toward the technician's load.
-    staff = {t["name"]: t for t in client.get("/technicians").json()}
-    assert staff["Arjun Mehta"]["open_tickets"] == 1
-    next_tech = client.post(
-        f"/tickets/{make_ticket(client, category='Network')}/feedback", json={"resolved": False}
-    ).json()["assignment"]["technician"]["name"]
-    assert next_tech == "Arjun Mehta"  # 1 open each now; tie goes to the lower id
+    # The technician's queue only shows tickets assigned to them.
+    assert [t["id"] for t in arjun.get("/tickets").json()] == [tid]
+    assert login(PRIYA).get("/tickets").json() == []
+    assert login(PRIYA).get(f"/tickets/{tid}").status_code == 404
+
+    # Must start before solving, and a technician can never close a ticket.
+    assert arjun.patch(f"/tickets/{tid}/status", json={"status": "PENDING_APPROVAL", "note": "x fixed"}).status_code == 409
+    assert arjun.patch(f"/tickets/{tid}/status", json={"status": "IN_PROGRESS"}).status_code == 200
+    assert arjun.patch(f"/tickets/{tid}/status", json={"status": "CLOSED", "note": "done"}).status_code == 409
+    assert arjun.patch(f"/tickets/{tid}/status", json={"status": "PENDING_APPROVAL"}).status_code == 422  # note needed
+    r = arjun.patch(f"/tickets/{tid}/status", json={"status": "PENDING_APPROVAL", "note": "Updated the VPN client"})
+    assert r.json()["status"] == "PENDING_APPROVAL"
+
+    # Employee rejects (reason required) -> back to the same technician.
+    assert employee.post(f"/tickets/{tid}/closure", json={"approved": False}).status_code == 422
+    r = employee.post(f"/tickets/{tid}/closure", json={"approved": False, "comment": "Still drops after an hour"})
+    assert r.json()["status"] == "IN_PROGRESS"
+    assert r.json()["assignment"]["technician"]["name"] == "Arjun Mehta"
+
+    arjun.patch(f"/tickets/{tid}/status", json={"status": "PENDING_APPROVAL", "note": "Replaced the Wi-Fi driver"})
+    # Only the employee who raised it can approve.
+    assert login("ravi.kumar@helpdesk.local").post(f"/tickets/{tid}/closure", json={"approved": True}).status_code == 404
+    assert arjun.post(f"/tickets/{tid}/closure", json={"approved": True}).status_code == 403
+    r = employee.post(f"/tickets/{tid}/closure", json={"approved": True})
+    assert r.json()["status"] == "CLOSED"
 
 
-def test_departments_endpoint(client):
-    depts = client.get("/departments").json()
+def test_closed_ticket_frees_technician_load(employee, login, admin, kb):
+    tid = make_ticket(employee)
+    escalate(employee, tid)
+    arjun = login(ARJUN)
+    arjun.patch(f"/tickets/{tid}/status", json={"status": "IN_PROGRESS"})
+    arjun.patch(f"/tickets/{tid}/status", json={"status": "PENDING_APPROVAL", "note": "Fixed the profile"})
+    employee.post(f"/tickets/{tid}/closure", json={"approved": True})
+
+    staff = {t["name"]: t for t in admin.get("/technicians").json()}
+    assert staff["Arjun Mehta"]["open_tickets"] == 0
+    assert escalate(employee, make_ticket(employee))["assignment"]["technician"]["name"] == "Arjun Mehta"
+
+
+def test_departments_endpoint(admin):
+    depts = admin.get("/departments").json()
     assert [d["name"] for d in depts] == [
         "Network Support",
         "Application Support",

@@ -1,22 +1,33 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router'
-import { getTicket, requestSuggestion, sendFeedback, updateStatus } from '../api'
+import {
+  addNote,
+  adminUpdateTicket,
+  getTicket,
+  reassignTicket,
+  reopenTicket,
+  requestSuggestion,
+  sendClosure,
+  sendFeedback,
+  updateStatus,
+} from '../api'
+import { useAuth } from '../auth'
 import AssignmentPanel from '../components/AssignmentPanel'
 import { PriorityBadge, StatusBadge } from '../components/Badges'
 import FeedbackPanel from '../components/FeedbackPanel'
 import { ErrorBox, Loading } from '../components/States'
 import SuggestionCard, { SuggestionPending } from '../components/SuggestionCard'
+import { AdminPanel, ClosurePanel, NoteForm, TechnicianPanel } from '../components/TicketActions'
 import Timeline from '../components/Timeline'
-import { STATUS_LABELS, formatDate } from '../constants'
+import { formatDate } from '../constants'
 import { useAsync } from '../useAsync'
 
-// Technician moves after a ticket has been assigned.
-const NEXT_STEP = { ASSIGNED: 'IN_PROGRESS', IN_PROGRESS: 'CLOSED' }
 const POLL_MS = 2000
 const POLL_LIMIT = 20 // ~40 s before offering a manual retry
 
 export default function TicketDetail() {
   const { id } = useParams()
+  const { user } = useAuth()
   const { data: ticket, error, loading, reload, setData } = useAsync(() => getTicket(id), [id])
   const [actionError, setActionError] = useState(null)
   const [busy, setBusy] = useState(false)
@@ -36,6 +47,21 @@ export default function TicketDetail() {
     return () => clearTimeout(timer)
   }, [waiting, polls, id, setData])
 
+  // Runs an action that returns the updated ticket; returns true on success.
+  async function run(action) {
+    setBusy(true)
+    setActionError(null)
+    try {
+      setData(await action())
+      return true
+    } catch (err) {
+      setActionError(err)
+      return false
+    } finally {
+      setBusy(false)
+    }
+  }
+
   async function retrySuggestion() {
     setRetrying(true)
     setActionError(null)
@@ -50,39 +76,25 @@ export default function TicketDetail() {
     }
   }
 
-  async function giveFeedback(resolved, comment) {
-    setBusy(true)
-    setActionError(null)
-    try {
-      setData(await sendFeedback(id, resolved, comment))
-    } catch (err) {
-      setActionError(err)
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  async function move(status) {
-    setBusy(true)
-    setActionError(null)
-    try {
-      setData(await updateStatus(id, status, `Moved to ${STATUS_LABELS[status]} by technician`))
-    } catch (err) {
-      setActionError(err)
-    } finally {
-      setBusy(false)
-    }
-  }
+  const adminAct = (kind, args) =>
+    run(() => {
+      if (kind === 'update') return adminUpdateTicket(id, args)
+      if (kind === 'reassign') return reassignTicket(id, args.techId, args.note)
+      if (kind === 'close') return updateStatus(id, 'CLOSED', args.note)
+      return reopenTicket(id, args.note)
+    })
 
   if (loading && !ticket) return <Loading />
   if (error && !ticket) return <ErrorBox error={error} onRetry={reload} />
 
-  const next = NEXT_STEP[ticket.status]
+  const isOwner = user.role === 'employee'
+  const isTech = user.role === 'technician'
+  const isAdmin = user.role === 'admin'
 
   return (
     <section className="space-y-5">
       <Link to="/" className="text-sm text-slate-500 hover:text-slate-800">
-        ← All tickets
+        ← Back
       </Link>
 
       <div className="rounded-lg border border-slate-200 bg-white p-5">
@@ -97,33 +109,30 @@ export default function TicketDetail() {
         <p className="mt-4 text-xs text-slate-500">
           Raised by {ticket.user_name} ({ticket.user_email}) · {formatDate(ticket.created_at)}
         </p>
-
-        {next && (
-          <div className="mt-4 border-t border-slate-100 pt-4">
-            <button
-              onClick={() => move(next)}
-              disabled={busy}
-              className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-60"
-            >
-              {busy ? 'Updating…' : `Mark as ${STATUS_LABELS[next]}`}
-            </button>
-          </div>
-        )}
-        <div className="mt-3">
-          <ErrorBox error={actionError} />
-        </div>
       </div>
+
+      <ErrorBox error={actionError} />
+
+      {isOwner && ticket.status === 'PENDING_APPROVAL' && (
+        <ClosurePanel ticket={ticket} busy={busy} onSubmit={(approved, comment) => run(() => sendClosure(id, approved, comment))} />
+      )}
+      {(isTech || isAdmin) && <TechnicianPanel ticket={ticket} busy={busy} onMove={(status, note) => run(() => updateStatus(id, status, note))} />}
+      {isAdmin && <AdminPanel key={`${ticket.priority}-${ticket.category}-${ticket.status}`} ticket={ticket} act={adminAct} busy={busy} />}
 
       {ticket.suggestion ? (
         <SuggestionCard suggestion={ticket.suggestion}>
-          {ticket.status === 'SUGGESTION_PROVIDED' && (
-            <FeedbackPanel answered={ticket.suggestion.answered} onSubmit={giveFeedback} busy={busy} />
+          {isOwner && ticket.status === 'SUGGESTION_PROVIDED' && (
+            <FeedbackPanel
+              answered={ticket.suggestion.answered}
+              onSubmit={(resolved, comment) => run(() => sendFeedback(id, resolved, comment))}
+              busy={busy}
+            />
           )}
           {ticket.suggestion.feedback_resolved !== null && (
             <p className="mt-4 border-t border-slate-100 pt-3 text-sm text-slate-600">
               {ticket.suggestion.feedback_resolved
-                ? '✓ The user confirmed this suggestion fixed the issue.'
-                : 'The user reported this did not fix the issue, so the ticket was escalated.'}
+                ? '✓ The employee confirmed this suggestion fixed the issue.'
+                : 'The employee reported this did not fix the issue, so the ticket was escalated.'}
               {ticket.suggestion.feedback_comment && (
                 <span className="block italic text-slate-500">“{ticket.suggestion.feedback_comment}”</span>
               )}
@@ -131,9 +140,12 @@ export default function TicketDetail() {
           )}
         </SuggestionCard>
       ) : (
-        ticket.status === 'OPEN' && (
+        ticket.status === 'OPEN' &&
+        (isOwner || isAdmin) && (
           <SuggestionPending failed={polls >= POLL_LIMIT} onRetry={retrySuggestion} retrying={retrying}>
-            {polls >= POLL_LIMIT && <FeedbackPanel answered={false} onSubmit={giveFeedback} busy={busy} />}
+            {isOwner && polls >= POLL_LIMIT && (
+              <FeedbackPanel answered={false} onSubmit={(resolved, comment) => run(() => sendFeedback(id, resolved, comment))} busy={busy} />
+            )}
           </SuggestionPending>
         )
       )}
@@ -143,6 +155,7 @@ export default function TicketDetail() {
       <div className="rounded-lg border border-slate-200 bg-white p-5">
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">Status timeline</h2>
         <Timeline history={ticket.history} />
+        <NoteForm busy={busy} onSubmit={(note) => run(() => addNote(id, note))} />
       </div>
     </section>
   )

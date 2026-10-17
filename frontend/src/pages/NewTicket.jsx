@@ -4,7 +4,7 @@ import { createTicket } from '../api'
 import { ErrorBox } from '../components/States'
 import { CATEGORIES, PRIORITIES } from '../constants'
 
-const EMPTY = { title: '', description: '', category: '', priority: 'Medium', user_name: '', user_email: '' }
+const EMPTY = { title: '', description: '', category: '', priority: 'Medium' }
 
 // Mirrors the backend rules so most mistakes are caught before submitting.
 function validate(form) {
@@ -13,8 +13,6 @@ function validate(form) {
   if (title.length < 5 || title.length > 120) errors.title = 'Title must be 5–120 characters.'
   if (form.description.trim().length < 20) errors.description = 'Please describe the problem in at least 20 characters.'
   if (!form.category) errors.category = 'Choose a category.'
-  if (form.user_name.trim().length < 2) errors.user_name = 'Enter your name.'
-  if (!/^\S+@\S+\.\S+$/.test(form.user_email.trim())) errors.user_email = 'Enter a valid email address.'
   return errors
 }
 
@@ -111,25 +109,6 @@ export default function NewTicket() {
                 <option key={p}>{p}</option>
               ))}
             </select>
-          </Field>
-          <Field label="Your name" name="user_name" error={errors.user_name}>
-            <input
-              id="user_name"
-              value={form.user_name}
-              onChange={set('user_name')}
-              className={inputClass(errors.user_name)}
-              autoComplete="name"
-            />
-          </Field>
-          <Field label="Your email" name="user_email" error={errors.user_email}>
-            <input
-              id="user_email"
-              type="email"
-              value={form.user_email}
-              onChange={set('user_email')}
-              className={inputClass(errors.user_email)}
-              autoComplete="email"
-            />
           </Field>
         </div>
 

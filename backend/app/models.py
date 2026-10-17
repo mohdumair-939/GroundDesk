@@ -39,7 +39,14 @@ class TicketStatus(str, enum.Enum):
     ESCALATED = "ESCALATED"
     ASSIGNED = "ASSIGNED"
     IN_PROGRESS = "IN_PROGRESS"
+    PENDING_APPROVAL = "PENDING_APPROVAL"  # technician marked solved; waiting for the employee
     CLOSED = "CLOSED"
+
+
+class Role(str, enum.Enum):
+    EMPLOYEE = "employee"
+    TECHNICIAN = "technician"
+    ADMIN = "admin"
 
 
 def _str_enum(enum_cls: type[enum.Enum], name: str) -> Enum:
@@ -69,6 +76,8 @@ class Ticket(Base):
     )
     user_name: Mapped[str] = mapped_column(String(100))
     user_email: Mapped[str] = mapped_column(String(254))
+    # The account that raised the ticket (null only for tickets created before logins existed).
+    created_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
@@ -104,8 +113,11 @@ class TicketStatusHistory(Base):
     new_status: Mapped[TicketStatus] = mapped_column(_str_enum(TicketStatus, "ticket_status"))
     changed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     note: Mapped[str | None] = mapped_column(String(500))
+    # Who made the change; null means the system (AI suggestion, automatic routing).
+    changed_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
 
     ticket: Mapped[Ticket] = relationship(back_populates="history")
+    changed_by: Mapped["User | None"] = relationship()
 
 
 class AISuggestion(Base):
@@ -196,4 +208,22 @@ class Assignment(Base):
 
     ticket: Mapped[Ticket] = relationship(back_populates="assignment")
     department: Mapped[Department] = relationship()
+    technician: Mapped[Technician | None] = relationship()
+
+
+class User(Base):
+    """A login. Email is unique across all roles, so one person has exactly one role."""
+
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(100))
+    email: Mapped[str] = mapped_column(String(254), unique=True, index=True)
+    password_hash: Mapped[str] = mapped_column(String(255))
+    role: Mapped[Role] = mapped_column(_str_enum(Role, "role"))
+    # Set for technician accounts: the Technician record they act as.
+    technician_id: Mapped[int | None] = mapped_column(ForeignKey("technicians.id"), unique=True)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
     technician: Mapped[Technician | None] = relationship()

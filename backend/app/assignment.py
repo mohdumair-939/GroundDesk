@@ -13,8 +13,8 @@ from dataclasses import dataclass
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.models import Assignment, Category, Department, Technician, Ticket, TicketStatus
-from app.ticket_service import change_status
+from app.models import Assignment, Category, Department, Technician, Ticket, TicketStatus, User
+from app.ticket_service import add_note, change_status
 
 DEFAULT_DEPARTMENT = "General IT"
 
@@ -97,8 +97,32 @@ def assign_ticket(db: Session, ticket: Ticket) -> Assignment:
     else:
         tech, rule = None, f"{route.rule}; no active technician, queued for the team"
 
-    assignment = Assignment(ticket_id=ticket.id, department_id=dept.id, technician_id=tech.id if tech else None, rule_matched=rule)
-    db.add(assignment)
+    assignment = ticket.assignment  # reused when an admin reopens a previously routed ticket
+    if assignment is None:
+        assignment = Assignment(ticket_id=ticket.id, department_id=dept.id)
+        db.add(assignment)
+    assignment.department_id = dept.id
+    assignment.technician_id = tech.id if tech else None
+    assignment.rule_matched = rule
+    assignment.assigned_at = func.now()
     who = f"{tech.name} ({dept.name})" if tech else dept.name
     change_status(db, ticket, TicketStatus.ASSIGNED, f"Assigned to {who}. {rule}")
     return assignment
+
+
+def reassign_ticket(db: Session, ticket: Ticket, technician: Technician, actor: User, note: str | None = None) -> Assignment:
+    """Admin override: move the ticket to another technician (and their department)."""
+    rule = (f"Reassigned by {actor.name} (admin)" + (f": {note}" if note else ""))[:255]  # column size
+    if ticket.assignment is None:
+        ticket.assignment = Assignment(department_id=technician.department_id, technician_id=technician.id, rule_matched=rule)
+    else:
+        ticket.assignment.department_id = technician.department_id
+        ticket.assignment.technician_id = technician.id
+        ticket.assignment.rule_matched = rule
+        ticket.assignment.assigned_at = func.now()
+    message = f"Reassigned to {technician.name} ({technician.department.name}) by {actor.name}" + (f". {note}" if note else "")
+    if ticket.status == TicketStatus.ASSIGNED:
+        add_note(db, ticket, message, actor)
+    else:
+        change_status(db, ticket, TicketStatus.ASSIGNED, message, actor)
+    return ticket.assignment

@@ -26,3 +26,9 @@ services:
         sync: false
       - key: GROQ_API_KEY
         sync: false
+      # Signs login tokens; Render generates a random value.
+      - key: JWT_SECRET
+        generateValue: true
+      # Initial password of the seeded demo accounts (admin, technicians, 2 employees).
+      - key: DEMO_PASSWORD
+        sync: false

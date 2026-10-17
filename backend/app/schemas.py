@@ -5,12 +5,66 @@ from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, StringConstraints
 
-from app.models import Category, Confidence, Priority, TicketStatus
+from app.models import Category, Confidence, Priority, Role, TicketStatus
 
 Title = Annotated[str, StringConstraints(strip_whitespace=True, min_length=5, max_length=120)]
 Description = Annotated[str, StringConstraints(strip_whitespace=True, min_length=20, max_length=5000)]
 Name = Annotated[str, StringConstraints(strip_whitespace=True, min_length=2, max_length=100)]
 Note = Annotated[str, StringConstraints(strip_whitespace=True, max_length=500)]
+RequiredNote = Annotated[str, StringConstraints(strip_whitespace=True, min_length=3, max_length=500)]
+Password = Annotated[str, StringConstraints(min_length=8, max_length=128)]
+LoginEmail = Annotated[str, StringConstraints(strip_whitespace=True, to_lower=True, min_length=3, max_length=254)]
+
+
+# ---------------------------------------------------------------- auth and users
+
+
+class LoginIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    # Plain text: sign-in only has to match a stored account (seeded staff use @helpdesk.local).
+    email: LoginEmail
+    password: str
+    role: Role  # the login option the user picked; must match the account's role
+
+
+class RegisterIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: Name
+    email: LoginEmail  # format is validated after the duplicate check, see routers/auth.py
+    password: Password
+
+
+class UserRef(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    role: Role
+
+
+class UserOut(UserRef):
+    email: str
+    technician_id: int | None
+    active: bool
+    created_at: datetime
+
+
+class TokenOut(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    user: UserOut
+
+
+class UserUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    active: bool | None = None
+    password: Password | None = None
+
+
+# ---------------------------------------------------------------- tickets
 
 
 class TicketCreate(BaseModel):
@@ -20,8 +74,7 @@ class TicketCreate(BaseModel):
     description: Description
     category: Category
     priority: Priority = Priority.MEDIUM
-    user_name: Name
-    user_email: EmailStr
+    # The requester's name and email come from the signed-in account.
 
 
 class StatusUpdate(BaseModel):
@@ -29,6 +82,37 @@ class StatusUpdate(BaseModel):
 
     status: TicketStatus
     note: Note | None = None
+
+
+class ClosureIn(BaseModel):
+    """The employee's answer when the technician marks the ticket solved."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    approved: bool
+    comment: Note | None = None
+
+
+class TicketUpdate(BaseModel):
+    """Admin edits."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    priority: Priority | None = None
+    category: Category | None = None
+
+
+class ReassignIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    technician_id: int
+    note: Note | None = None
+
+
+class NoteIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    note: RequiredNote
 
 
 class FeedbackIn(BaseModel):
@@ -82,6 +166,7 @@ class StatusHistoryOut(BaseModel):
     new_status: TicketStatus
     changed_at: datetime
     note: str | None
+    changed_by: UserRef | None  # None = system (AI, automatic routing)
 
 
 class TicketOut(BaseModel):

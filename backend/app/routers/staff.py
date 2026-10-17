@@ -6,10 +6,11 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.assignment import technician_loads
 from app.database import get_db
-from app.models import Department
+from app.models import Department, Role
 from app.schemas import DepartmentOut, TechnicianOut
+from app.security import require_roles
 
-router = APIRouter(tags=["staff"])
+router = APIRouter(tags=["staff"], dependencies=[Depends(require_roles(Role.ADMIN))])
 
 
 def _departments(db: Session) -> list[DepartmentOut]:

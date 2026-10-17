@@ -25,13 +25,15 @@ os.environ["DATABASE_URL"] = _url.set(database=TEST_DB).render_as_string(hide_pa
 os.environ["LLM_PROVIDER"] = "mock"
 os.environ["EMBEDDING_PROVIDER"] = "mock"
 os.environ["SIMILARITY_THRESHOLD"] = "0.40"
+os.environ["JWT_SECRET"] = "test-secret-not-for-production-use-0123456789"
+os.environ["DEMO_PASSWORD"] = DEMO_PASSWORD = "Demo@1234"
 
-admin = create_engine(_url, isolation_level="AUTOCOMMIT")
-with admin.connect() as conn:
+_admin_engine = create_engine(_url, isolation_level="AUTOCOMMIT")
+with _admin_engine.connect() as conn:
     exists = conn.execute(text("SELECT 1 FROM pg_database WHERE datname = :n"), {"n": TEST_DB}).first()
     if not exists:
         conn.execute(text(f'CREATE DATABASE "{TEST_DB}"'))
-admin.dispose()
+_admin_engine.dispose()
 
 # Import the app only after DATABASE_URL points at the test database.
 import importlib  # noqa: E402
@@ -64,16 +66,18 @@ with SessionLocal() as _db:
     seed(_db)
 
 
-# Reference data kept between tests: the KB (see the `kb` fixture) and seeded staff.
-KEEP_TABLES = {"kb_documents", "kb_chunks", "departments", "technicians"}
+# Reference data kept between tests: the KB (see the `kb` fixture), seeded staff and accounts.
+KEEP_TABLES = {"kb_documents", "kb_chunks", "departments", "technicians", "users"}
 
 
 @pytest.fixture(autouse=True)
 def clean_tables():
-    """Empty all ticket tables before each test."""
+    """Empty all ticket tables before each test, and drop accounts that tests registered."""
     tables = ", ".join(t.name for t in Base.metadata.sorted_tables if t.name not in KEEP_TABLES)
     with engine.begin() as conn:
         conn.execute(text(f"TRUNCATE {tables} RESTART IDENTITY CASCADE"))
+        conn.execute(text("DELETE FROM users WHERE email NOT LIKE '%@helpdesk.local'"))
+        conn.execute(text("UPDATE users SET active = true"))
     yield
 
 
@@ -96,8 +100,41 @@ def kb():
 
 @pytest.fixture
 def client():
+    """Not signed in."""
     with TestClient(fastapi_app) as c:
         yield c
+
+
+ROLES = {"admin@helpdesk.local": "admin", "asha.rao@helpdesk.local": "employee", "ravi.kumar@helpdesk.local": "employee"}
+
+
+@pytest.fixture
+def login():
+    """login(email) -> a TestClient signed in as that seeded account (technicians by email)."""
+    clients = []
+
+    def _login(email: str, role: str | None = None) -> TestClient:
+        role = role or ROLES.get(email, "technician")
+        c = TestClient(fastapi_app)
+        r = c.post("/auth/login", json={"email": email, "password": DEMO_PASSWORD, "role": role})
+        assert r.status_code == 200, r.text
+        c.headers["Authorization"] = f"Bearer {r.json()['access_token']}"
+        clients.append(c)
+        return c
+
+    yield _login
+    for c in clients:
+        c.close()
+
+
+@pytest.fixture
+def employee(login):
+    return login("asha.rao@helpdesk.local")
+
+
+@pytest.fixture
+def admin(login):
+    return login("admin@helpdesk.local")
 
 
 VALID_TICKET = {
@@ -105,8 +142,6 @@ VALID_TICKET = {
     "description": "The VPN client times out every time I try to connect from my home Wi-Fi.",
     "category": "Network",
     "priority": "High",
-    "user_name": "Asha Rao",
-    "user_email": "asha.rao@example.com",
 }
 
 
