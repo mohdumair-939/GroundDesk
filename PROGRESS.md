@@ -6,9 +6,9 @@ Source of truth: `docs/Smart Help Desk Ticketing System — Master Plan.pdf`
 
 | # | Sub-sprint | Plan "done when" | Status |
 |---|---|---|---|
-| 0.1 | Repo with /backend, /frontend, /kb, /docs + README | Repo pushed | Built locally. **Push pending** (needs GitHub repo + git identity) |
+| 0.1 | Repo with /backend, /frontend, /kb, /docs + README | Repo pushed | **Done** — pushed to github.com/mohdumair-939/IT-Help-Desk-RAG (2026-10-17) |
 | 0.2 | FastAPI app with /health and .env config | /docs opens locally | **Done, verified** |
-| 0.3 | Neon/Supabase DB, pgvector, SQLAlchemy connection | Health reports DB connected | Code done. **Not verified** (needs `DATABASE_URL`) |
+| 0.3 | Neon/Supabase DB, pgvector, SQLAlchemy connection | Health reports DB connected | **Done, verified** on Neon (2026-10-17) |
 | 0.4 | React + Vite + Tailwind, API URL from env | Frontend calls /health | **Done, verified** |
 | 0.5 | Deploy backend to Render, frontend to Vercel, CORS | Live URLs work end to end | Config done. **Not deployed** (needs push + accounts) |
 
@@ -44,22 +44,74 @@ Source of truth: `docs/Smart Help Desk Ticketing System — Master Plan.pdf`
 - Vercel needs no config file. Set the root directory to `frontend` and add `VITE_API_URL`.
 - `render.yaml` parses as valid YAML. **Neither Render nor Vercel has been deployed or tested.**
 
+## Sprint 1 — Ticket management (2026-10-17)
+
+| # | Sub-sprint | Status |
+|---|---|---|
+| 1.1 | Models + Alembic migration | **Done** — `tickets`, `ticket_status_history` created on Neon |
+| 1.2 | Validation | **Done** — title 5–120, description ≥20, category/priority enums, email → 422 |
+| 1.3 | POST/GET/GET by id/PATCH status | **Done** |
+| 1.4 | Status-history logging | **Done** — every change goes through `ticket_service.change_status`; `GET /tickets/{id}/history` |
+| 1.5 | UI: create form, list with filters + badges, detail with timeline | **Done**, smoke-tested in headless Chrome |
+| 1.6 | pytest scenarios 1–3 | **Done** — 14 tests pass |
+
+- Allowed transitions are enforced (`ALLOWED_TRANSITIONS`); an invalid move returns 409.
+- Tests run against a separate `<db>_test` database on the same Neon server, created automatically by `tests/conftest.py`. Run with `.venv\Scripts\python -m pytest` from `backend/`.
+- Render now runs `alembic upgrade head` before starting uvicorn.
+- `frontend/vercel.json` rewrites all paths to `index.html` so client-side routes work on Vercel.
+- Model choices verified on 2026-10-17: Gemini `gemini-embedding-001` (768 dims) and `gemini-3.8-flash`; Groq backup `openai/gpt-oss-120b`. (`gemini-2.5-flash` is no longer available to new keys.)
+- The production DB contains one smoke-test ticket (HD-0001); clear it before the demo.
+
+## Sprint 2 — Knowledge base and RAG (2026-10-17)
+
+| # | Sub-sprint | Status |
+|---|---|---|
+| 2.1 | 15–25 KB docs, tagged by category | **Done** — 21 docs in `/kb` (front matter: `title`, `category`) |
+| 2.2 | `ingest.py`: load, chunk (~500 tokens, ~50 overlap), embed, store | **Done** — `python -m app.ingest [--force]`; skips unchanged docs, removes deleted ones |
+| 2.3 | Retrieval: pgvector cosine top-4 with scores | **Done** — `rag.retrieve` |
+| 2.4 | Insufficient-context guard | **Done** — best score < 0.70 → "no reliable solution", LLM not called |
+| 2.5 | Grounded prompt, numbered steps, save suggestion + sources | **Done** — `ai_suggestions` table |
+| 2.6 | `POST /tickets/{id}/suggest`, auto-run after creation | **Done** — background task after `POST /tickets`; the UI polls. Provider failure → 503, ticket stays OPEN, "Try again" button |
+| 2.7 | UI: suggestion card, sources, High/Medium/Low | **Done** |
+| 2.8 | Tests scenarios 4–6 (LLM mocked) | **Done** |
+
+- `llm_client.py` holds every provider call. `LLM_PROVIDER` = gemini | groq | mock; if the primary fails, the other hosted provider is tried. `EMBEDDING_PROVIDER` = gemini | mock. Tests use mock for both (no API calls).
+- Threshold calibration with Gemini (2026-10-17): 7 in-KB queries scored 0.72–0.77, 6 out-of-KB queries 0.62–0.66. Confidence: High ≥ 0.76, Medium ≥ 0.73, Low ≥ 0.70 (`CONFIDENCE_*_MARGIN`).
+- Every doc fits in a single ~500-token chunk, so there are 21 chunks. Chunk overlap carries trailing words when a paragraph is longer than the overlap budget (bug found and fixed by a test).
+- Verified with real Gemini: VPN ticket → High confidence, 7 steps citing the VPN guide. Fan-noise ticket → guard, best 0.64.
+
+## Sprint 3 — Resolution and assignment (2026-10-17)
+
+| # | Sub-sprint | Status |
+|---|---|---|
+| 3.1 | Seed departments + technicians | **Done** — `python -m app.seed` (idempotent): Network Support, Application Support, Hardware Support, Identity & Access, General IT; 9 technicians. Seeded on the Neon prod DB |
+| 3.2 | `POST /tickets/{id}/feedback {resolved, comment}` | **Done** — Yes → RESOLVED. No → ESCALATED → routed → ASSIGNED. "No" is also accepted for OPEN tickets (AI unavailable) |
+| 3.3 | `assignment.py`: category rule, keyword fallback, default General IT, least-loaded technician | **Done** — keywords apply to category "Other"; load = ASSIGNED + IN_PROGRESS tickets, ties → lowest id |
+| 3.4 | Store `rule_matched` and show the reason | **Done** — `assignments.rule_matched`, assignment panel + timeline note |
+| 3.5 | UI: Yes/No buttons, assignment panel, technician view | **Done** — `/technician` page: pick a technician, Start work → In progress → Close |
+| 3.6 | Tests scenarios 7–9 | **Done** |
+
+- `PATCH /tickets/{id}/status` now only accepts the technician moves (IN_PROGRESS, CLOSED). RESOLVED/ESCALATED/ASSIGNED/SUGGESTION_PROVIDED come from the suggestion and feedback endpoints (409 otherwise).
+- New endpoints: `GET /departments`, `GET /technicians` (with open-ticket counts), and `GET /tickets?technician_id=&department_id=`.
+- Render start command: `alembic upgrade head && python -m app.seed && (python -m app.ingest || echo …) && uvicorn …`.
+- **Tests: 35 pass.** Run with `.venv\Scripts\python -m pytest` from `backend/`. Two sessions sharing the default `<db>_test` database break each other (`drop_all` at start), so set `TEST_DB_NAME` (must contain "test") for a parallel run.
+- The prod DB holds demo tickets HD-0001…HD-0004 from manual checks. Clear them before the review.
+
 ## Remaining issues / notes
 
 - Local ports 8000 and 5173 are used by other Docker/WSL apps on this machine, so the backend runs on **8010** locally. If 5173 is busy, run the frontend on another port and add that origin to `CORS_ORIGINS`.
 - Node v24.22.0 / npm 11.19.1 are installed in `C:\Program Files\nodejs` but are not on the PATH in the agent's shell. They work from a normal terminal.
-- No `/health` automated test yet. The plan starts pytest in Sprint 1.6.
 - The Docker Desktop engine was accidentally stopped during verification on 2026-10-16. The owner needs to restart Docker Desktop.
 
 ## External setup required to close Sprint 0
 
-1. Git `user.name` / `user.email`, for the first commit.
-2. An empty GitHub repository URL. Then commit and push (closes 0.1).
-3. A Neon (or Supabase) project: run `CREATE EXTENSION IF NOT EXISTS vector;`, then put the connection string in `backend/.env` (closes 0.3).
+1. ~~Git identity~~ done (repo-local).
+2. ~~GitHub repo + push~~ done 2026-10-17.
+3. ~~Neon database + pgvector~~ done 2026-10-17. Gemini and Groq keys are in `backend/.env` and tested.
 4. Render: deploy the Blueprint from the GitHub repo and set `DATABASE_URL` + `CORS_ORIGINS`.
 5. Vercel: import the repo with root dir `frontend` and set `VITE_API_URL` to the Render URL.
 6. Share both live URLs so the end-to-end check can be verified (closes 0.5).
 
 ## Next approved task
 
-Close the remaining Sprint 0 items (0.1 push, 0.3 DB verification, 0.5 deploy) once the external setup above is provided. Sprint 1.1 has not been approved yet.
+Sprints 1–3 are built and tested locally (2026-10-17). Nothing after the Sprint 0 commit has been committed yet. Next: commit/push (when the owner asks), deploy (0.5, needs the owner's Render and Vercel accounts), then Sprint 4 (dashboard, polish, docs, demo prep).

@@ -1,47 +1,44 @@
-import { useEffect, useState } from 'react'
-import { API_URL, getHealth } from './api'
+import { NavLink, Route, Routes } from 'react-router'
+import NewTicket from './pages/NewTicket'
+import TechnicianView from './pages/TechnicianView'
+import TicketDetail from './pages/TicketDetail'
+import TicketList from './pages/TicketList'
+
+const navClass = ({ isActive }) =>
+  `rounded-md px-3 py-1.5 text-sm font-medium ${isActive ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'}`
 
 function App() {
-  const [health, setHealth] = useState(null)
-  const [error, setError] = useState(null)
-
-  useEffect(() => {
-    getHealth()
-      .then(setHealth)
-      .catch((err) => setError(err.message))
-  }, [])
-
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-12 text-slate-800">
-      <div className="mx-auto max-w-xl rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-        <h1 className="text-2xl font-semibold">Smart Help Desk</h1>
-        <p className="mt-1 text-sm text-slate-500">IT support ticketing system</p>
+    <div className="min-h-screen bg-slate-50 text-slate-800">
+      <header className="border-b border-slate-200 bg-white">
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
+          <NavLink to="/" className="text-lg font-semibold text-slate-900">
+            Smart Help Desk
+          </NavLink>
+          <nav className="flex flex-wrap gap-1">
+            <NavLink to="/" end className={navClass}>
+              Tickets
+            </NavLink>
+            <NavLink to="/new" className={navClass}>
+              New ticket
+            </NavLink>
+            <NavLink to="/technician" className={navClass}>
+              Technician
+            </NavLink>
+          </nav>
+        </div>
+      </header>
 
-        <h2 className="mt-6 text-sm font-medium uppercase tracking-wide text-slate-500">
-          Backend status
-        </h2>
-        <p className="mt-1 text-xs text-slate-400">{API_URL}</p>
-
-        {!health && !error && <p className="mt-3">Checking…</p>}
-
-        {error && (
-          <p className="mt-3 rounded bg-red-50 p-3 text-red-700">
-            Could not reach the backend: {error}
-          </p>
-        )}
-
-        {health && (
-          <dl className="mt-3 grid grid-cols-2 gap-2 text-sm">
-            <dt className="text-slate-500">API</dt>
-            <dd className="font-medium">{health.status}</dd>
-            <dt className="text-slate-500">Database</dt>
-            <dd className="font-medium">{health.database}</dd>
-            <dt className="text-slate-500">pgvector</dt>
-            <dd className="font-medium">{health.pgvector}</dd>
-          </dl>
-        )}
-      </div>
-    </main>
+      <main className="mx-auto max-w-5xl px-4 py-6">
+        <Routes>
+          <Route path="/" element={<TicketList />} />
+          <Route path="/new" element={<NewTicket />} />
+          <Route path="/tickets/:id" element={<TicketDetail />} />
+          <Route path="/technician" element={<TechnicianView />} />
+          <Route path="*" element={<p className="text-slate-500">Page not found.</p>} />
+        </Routes>
+      </main>
+    </div>
   )
 }
 

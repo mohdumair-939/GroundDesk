@@ -1,10 +1,11 @@
-"""FastAPI entry point. Run locally with: uvicorn app.main:app --reload"""
+"""FastAPI entry point. Run locally with: uvicorn app.main:app --reload --port 8010"""
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.database import check_database
+from app.routers import staff, tickets
 
 app = FastAPI(title=settings.app_name)
 
@@ -15,6 +16,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(tickets.router)
+app.include_router(staff.router)
 
 
 @app.get("/health")
