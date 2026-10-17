@@ -18,7 +18,8 @@ logger = logging.getLogger(__name__)
 EMBEDDING_DIM = 768
 GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta/models"
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
-TIMEOUT = httpx.Timeout(60.0, connect=10.0)
+# Short enough that a stalled provider falls back to the other one quickly.
+TIMEOUT = httpx.Timeout(25.0, connect=10.0)
 
 
 class LLMError(RuntimeError):

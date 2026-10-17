@@ -81,6 +81,14 @@ def clean_tables():
     yield
 
 
+@pytest.fixture(autouse=True)
+def synchronous_suggestions(monkeypatch):
+    """Run the AI suggestion inline so tests can check its result right after creating a ticket."""
+    from app.routers import tickets as tickets_router
+
+    monkeypatch.setattr(tickets_router, "schedule_suggestion", tickets_router.auto_suggest)
+
+
 @pytest.fixture
 def empty_kb():
     with engine.begin() as conn:

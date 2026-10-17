@@ -6,8 +6,9 @@ are not leaked.
 """
 
 import logging
+from concurrent.futures import ThreadPoolExecutor, wait
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session, selectinload
 
@@ -93,6 +94,29 @@ def forbidden(message: str = "You do not have access to this action") -> HTTPExc
     return HTTPException(status.HTTP_403_FORBIDDEN, message)
 
 
+# AI suggestions run on their own worker threads, NOT as FastAPI BackgroundTasks: those run
+# inside the creating request's cycle, so a slow LLM call kept that connection busy and other
+# requests that Render's proxy queued on it were dropped. Two workers keep memory low on the
+# free tier; extra tickets wait in the pool's queue.
+_suggestion_pool = ThreadPoolExecutor(max_workers=2, thread_name_prefix="ai-suggest")
+_pending = set()
+
+
+def submit_suggestion(ticket_id: int) -> None:
+    future = _suggestion_pool.submit(auto_suggest, ticket_id)
+    _pending.add(future)
+    future.add_done_callback(_pending.discard)
+
+
+def wait_for_suggestions(timeout: float = 30) -> None:
+    """For tests and shutdown: wait until queued suggestions have finished."""
+    wait(list(_pending), timeout=timeout)
+
+
+# Tests replace this with a synchronous call.
+schedule_suggestion = submit_suggestion
+
+
 def auto_suggest(ticket_id: int) -> None:
     """Background task run after a ticket is created. Failures leave the ticket OPEN."""
     with database.SessionLocal() as db:
@@ -112,14 +136,14 @@ def auto_suggest(ticket_id: int) -> None:
 @router.post("", response_model=TicketDetail, status_code=status.HTTP_201_CREATED)
 def create(
     payload: TicketCreate,
-    background: BackgroundTasks,
     db: Session = Depends(get_db),
     user: User = Depends(require_roles(Role.EMPLOYEE)),
 ):
     ticket = create_ticket(db, created_by=user, user_name=user.name, user_email=user.email, **payload.model_dump())
     db.commit()
-    background.add_task(auto_suggest, ticket.id)
-    return reload_ticket(db, ticket.id)
+    created = reload_ticket(db, ticket.id)  # respond with the ticket as created (OPEN)
+    schedule_suggestion(ticket.id)
+    return created
 
 
 @router.get("", response_model=list[TicketOut])

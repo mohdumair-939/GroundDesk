@@ -24,3 +24,10 @@ def test_unhandled_error_returns_json_500_with_cors(monkeypatch):
     assert r.status_code == 500
     assert r.json() == {"detail": "Internal server error"}
     assert r.headers.get("access-control-allow-origin") == ORIGIN
+
+
+def test_health_reports_deployed_version(monkeypatch):
+    monkeypatch.setenv("RENDER_GIT_COMMIT", "f6145bb1234567")
+    with TestClient(app) as client:
+        body = client.get("/health").json()
+    assert body["status"] == "ok" and body["version"] == "f6145bb"

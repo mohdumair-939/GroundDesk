@@ -1,6 +1,7 @@
 """FastAPI entry point. Run locally with: uvicorn app.main:app --reload --port 8010"""
 
 import logging
+import os
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -45,4 +46,5 @@ app.include_router(users.router)
 def health():
     db = check_database()
     status = "ok" if db["database"] == "connected" else "degraded"
-    return {"status": status, **db}
+    # RENDER_GIT_COMMIT is set by Render, so the deployed version can be checked from outside.
+    return {"status": status, **db, "version": os.getenv("RENDER_GIT_COMMIT", "dev")[:7]}
