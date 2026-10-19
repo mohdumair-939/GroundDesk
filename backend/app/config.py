@@ -11,7 +11,7 @@ ENV_FILE = BACKEND_DIR / ".env"
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=ENV_FILE, extra="ignore")
 
-    app_name: str = "Smart Help Desk API"
+    app_name: str = "GroundDesk API"
     database_url: str = ""
     cors_origins: str = "http://localhost:5173"
 

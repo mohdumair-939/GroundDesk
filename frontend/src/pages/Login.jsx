@@ -70,8 +70,8 @@ export default function Login() {
     <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-10">
       <div className="w-full max-w-3xl">
         <div className="text-center">
-          <h1 className="text-2xl font-semibold text-slate-900">Smart Help Desk</h1>
-          <p className="mt-1 text-sm text-slate-500">IT support ticketing with AI troubleshooting suggestions</p>
+          <h1 className="text-2xl font-semibold text-slate-900">GroundDesk</h1>
+          <p className="mt-1 text-sm text-slate-500">AI help desk that only answers from verified knowledge</p>
           <div className="mt-3">
             <ServerStatus />
           </div>

@@ -68,7 +68,7 @@ function App() {
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
           <NavLink to="/" className="text-lg font-semibold text-slate-900">
-            Smart Help Desk
+            GroundDesk
           </NavLink>
           <nav className="flex flex-wrap gap-1">
             {NAV[user.role].map(([to, label]) => (

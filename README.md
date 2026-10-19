@@ -1,4 +1,4 @@
-# Smart Help Desk Ticketing System for IT Services
+# GroundDesk: Smart Help Desk Ticketing System for IT Services
 
 A college mini-project: an IT help desk where employees raise tickets, an AI suggests troubleshooting steps **grounded in a knowledge base** (RAG), and anything the AI cannot solve is routed to the right technician by explainable rules. If the knowledge base has no reliable answer, the system says so instead of guessing.
 
