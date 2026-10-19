@@ -4,8 +4,7 @@ A college mini-project: an IT help desk where employees raise tickets, an AI sug
 
 - **Live app:** https://it-help-desk-rag.vercel.app
 - **API docs (Swagger):** https://smart-helpdesk-api-w2mf.onrender.com/docs
-- **Demo data, accounts and test walkthrough:** [`docs/DEMO_DATA_AND_TESTING_GUIDE.md`](docs/DEMO_DATA_AND_TESTING_GUIDE.md)
-- **Test report:** [`docs/TEST_REPORT.md`](docs/TEST_REPORT.md) · **Demo script:** [`docs/DEMO_SCRIPT.md`](docs/DEMO_SCRIPT.md) · **Progress log:** [`PROGRESS.md`](PROGRESS.md)
+- **Progress log:** [`PROGRESS.md`](PROGRESS.md)
 
 > The backend runs on Render's free tier, which sleeps after ~15 minutes idle. The login page shows **Server ready** once it has woken up (up to a minute).
 
@@ -101,7 +100,6 @@ frontend/
   src/api.js           API client (errors, retries, route fallback) + api.test.js
   vercel.json          SPA routing and the /api → Render forward
 kb/                    21 troubleshooting articles (front matter: title, category)
-docs/                  master plan, demo-data guide, test report, demo script
 render.yaml            Render Blueprint for the backend
 ```
 
@@ -158,7 +156,7 @@ cd backend;  .venv\Scripts\python -m pytest       # 62 tests; uses a separate <d
 cd frontend; npm test; npm run lint; npm run build # 10 tests
 ```
 
-The backend tests use mock embeddings and a mocked LLM, so they make no AI API calls. They cover the 10 scenarios from the brief plus auth, roles, the dashboard and the regressions found in production. Results and the live verification are in [`docs/TEST_REPORT.md`](docs/TEST_REPORT.md).
+The backend tests use mock embeddings and a mocked LLM, so they make no AI API calls. They cover the 10 scenarios from the brief plus auth, roles, the dashboard and the regressions found in production.
 
 ## Deployment
 
