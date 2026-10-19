@@ -2,7 +2,7 @@
 
 A college mini-project: an IT help desk where employees raise tickets, an AI suggests troubleshooting steps **grounded in a knowledge base** (RAG), and anything the AI cannot solve is routed to the right technician by explainable rules. If the knowledge base has no reliable answer, the system says so instead of guessing.
 
-- **Live app:** https://it-help-desk-rag.vercel.app
+- **Live app:** https://grounddesk.vercel.app
 - **API docs (Swagger):** https://smart-helpdesk-api-w2mf.onrender.com/docs
 - **Progress log:** [`PROGRESS.md`](PROGRESS.md)
 

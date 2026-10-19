@@ -10,7 +10,7 @@ Source of truth: `docs/Smart Help Desk Ticketing System — Master Plan.pdf`
 | 0.2 | FastAPI app with /health and .env config | /docs opens locally | **Done, verified** |
 | 0.3 | Neon/Supabase DB, pgvector, SQLAlchemy connection | Health reports DB connected | **Done, verified** on Neon (2026-10-17) |
 | 0.4 | React + Vite + Tailwind, API URL from env | Frontend calls /health | **Done, verified** |
-| 0.5 | Deploy backend to Render, frontend to Vercel, CORS | Live URLs work end to end | **Done, verified** 2026-10-17 — https://it-help-desk-rag.vercel.app → https://smart-helpdesk-api-w2mf.onrender.com |
+| 0.5 | Deploy backend to Render, frontend to Vercel, CORS | Live URLs work end to end | **Done, verified** 2026-10-17 — https://grounddesk.vercel.app → https://smart-helpdesk-api-w2mf.onrender.com |
 
 ### 0.1 — Repository and structure (2026-10-16)
 - `git init -b main`. Created `/backend`, `/frontend` and `/kb` (`kb/.gitkeep` for now). `/docs` holds the master plan, unchanged.
