@@ -15,7 +15,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.models import Department, Role, Technician, User
+from app.models import STAFF_DOMAIN, Department, Role, Technician, User
 from app.security import hash_password
 
 DEPARTMENTS = {
@@ -39,7 +39,7 @@ DEPARTMENTS = {
 }
 
 
-ADMINS = [("Help Desk Admin", "admin@helpdesk.local")]
+ADMINS = [("Help Desk Admin", f"admin@{STAFF_DOMAIN}")]
 EMPLOYEES = [("Asha Rao", "asha.rao@helpdesk.local"), ("Ravi Kumar", "ravi.kumar@helpdesk.local")]
 
 
@@ -77,7 +77,7 @@ def seed(db: Session) -> dict:
             db.flush()
             created["departments"] += 1
         for tech_name, handle in techs:
-            email = f"{handle}@helpdesk.local"
+            email = f"{handle}@{STAFF_DOMAIN}"
             tech = db.scalars(select(Technician).where(Technician.email == email)).first()
             if tech is None:
                 tech = Technician(name=tech_name, email=email, department_id=dept.id)
@@ -94,7 +94,7 @@ def seed(db: Session) -> dict:
 
 
 def seeded_emails() -> list[str]:
-    techs = [f"{handle}@helpdesk.local" for _, (_, people) in DEPARTMENTS.items() for _, handle in people]
+    techs = [f"{handle}@{STAFF_DOMAIN}" for _, (_, people) in DEPARTMENTS.items() for _, handle in people]
     return techs + [email for _, email in ADMINS + EMPLOYEES]
 
 

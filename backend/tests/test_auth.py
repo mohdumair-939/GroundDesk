@@ -13,8 +13,8 @@ def login_status(client, email, role, password=PASSWORD):
     "email,role",
     [
         ("asha.rao@helpdesk.local", "employee"),
-        ("vikram.singh@helpdesk.local", "technician"),
-        ("admin@helpdesk.local", "admin"),
+        ("vikram.singh@grounddesk.com", "technician"),
+        ("admin@grounddesk.com", "admin"),
     ],
 )
 def test_each_role_signs_in_through_its_own_option(client, email, role):
@@ -30,8 +30,8 @@ def test_each_role_signs_in_through_its_own_option(client, email, role):
     [
         ("asha.rao@helpdesk.local", "admin", "Employee"),
         ("asha.rao@helpdesk.local", "technician", "Employee"),
-        ("vikram.singh@helpdesk.local", "employee", "Technician"),
-        ("admin@helpdesk.local", "employee", "Admin"),
+        ("vikram.singh@grounddesk.com", "employee", "Technician"),
+        ("admin@grounddesk.com", "employee", "Admin"),
     ],
 )
 def test_signing_in_through_another_roles_option_is_refused(client, email, wrong_role, right_label):
@@ -42,7 +42,7 @@ def test_signing_in_through_another_roles_option_is_refused(client, email, wrong
 
 def test_wrong_password_and_unknown_email(client):
     assert login_status(client, "asha.rao@helpdesk.local", "employee", "nope-nope").status_code == 401
-    assert login_status(client, "nobody@helpdesk.local", "employee").status_code == 401
+    assert login_status(client, "nobody@grounddesk.com", "employee").status_code == 401
 
 
 def test_requests_without_a_valid_token_are_rejected(client):
@@ -57,10 +57,38 @@ def test_employee_registration_and_one_role_per_email(client):
     assert login_status(client, "neha@example.com", "employee", "Secret123!").status_code == 200
 
     # The same email cannot get a second account, in any letter case or role.
-    for email in ("neha@example.com", "NEHA@example.com", "vikram.singh@helpdesk.local", "admin@helpdesk.local"):
+    for email in ("neha@example.com", "NEHA@example.com", "vikram.singh@grounddesk.com", "admin@grounddesk.com"):
         r = client.post("/auth/register", json={"name": "Someone", "email": email, "password": "Secret123!"})
         assert r.status_code == 409, email
     assert client.post("/auth/register", json={"name": "Shorty", "email": "s@example.com", "password": "short"}).status_code == 422
+
+
+def test_staff_domain_is_reserved_for_technicians_and_admins(client):
+    # Employees can register with any domain except the staff one.
+    r = client.post("/auth/register", json={"name": "Not Staff", "email": "new.person@GroundDesk.com", "password": "Secret123!"})
+    assert r.status_code == 422
+    assert "reserved" in r.json()["detail"]
+    assert client.post("/auth/register", json={"name": "Gmail User", "email": "someone@gmail.com", "password": "Secret123!"}).status_code == 201
+
+
+def test_staff_accounts_outside_the_staff_domain_cannot_sign_in(client):
+    from sqlalchemy import select
+
+    from app.database import SessionLocal
+    from app.models import Role, User
+    from app.security import hash_password
+
+    with SessionLocal() as db:
+        db.add(User(name="Off Domain", email="off.domain@example.com", password_hash=hash_password(PASSWORD), role=Role.TECHNICIAN))
+        db.commit()
+    try:
+        r = login_status(client, "off.domain@example.com", "technician")
+        assert r.status_code == 403
+        assert "@grounddesk.com" in r.json()["detail"]
+    finally:
+        with SessionLocal() as db:
+            db.delete(db.scalars(select(User).where(User.email == "off.domain@example.com")).one())
+            db.commit()
 
 
 def test_employees_only_see_their_own_tickets(employee, login, ticket_payload):
@@ -72,7 +100,7 @@ def test_employees_only_see_their_own_tickets(employee, login, ticket_payload):
 
 
 def test_only_employees_raise_tickets_and_only_admins_manage(login, admin, ticket_payload):
-    tech = login("vikram.singh@helpdesk.local")
+    tech = login("vikram.singh@grounddesk.com")
     assert tech.post("/tickets", json=ticket_payload).status_code == 403
     assert admin.post("/tickets", json=ticket_payload).status_code == 403
     assert tech.get("/users").status_code == 403
@@ -98,8 +126,8 @@ def test_admin_sees_everything_and_can_follow_up(employee, admin, login, kb, tic
     a = r.json()["assignment"]
     assert (a["technician"]["name"], a["department"]["name"]) == ("Meera Joshi", "Identity & Access")
     assert a["rule_matched"].startswith("Reassigned by Help Desk Admin")
-    assert [t["id"] for t in login("meera.joshi@helpdesk.local").get("/tickets").json()] == [tid]
-    assert login("arjun.mehta@helpdesk.local").get(f"/tickets/{tid}").status_code == 404
+    assert [t["id"] for t in login("meera.joshi@grounddesk.com").get("/tickets").json()] == [tid]
+    assert login("arjun.mehta@grounddesk.com").get(f"/tickets/{tid}").status_code == 404
 
     # Force-close needs a reason; reopen sends it back to the same technician.
     assert admin.patch(f"/tickets/{tid}/status", json={"status": "CLOSED"}).status_code == 422
@@ -120,7 +148,7 @@ def test_admin_reopens_ai_resolved_ticket_by_routing_it(employee, admin, kb, tic
 def test_admin_user_management(client, admin):
     client.post("/auth/register", json={"name": "Temp User", "email": "temp@example.com", "password": "Secret123!"})
     users = {u["email"]: u for u in admin.get("/users").json()}
-    assert users["admin@helpdesk.local"]["role"] == "admin"
+    assert users["admin@grounddesk.com"]["role"] == "admin"
     assert len([u for u in users.values() if u["role"] == "technician"]) == 9
     uid = users["temp@example.com"]["id"]
 
@@ -129,7 +157,7 @@ def test_admin_user_management(client, admin):
     admin.patch(f"/users/{uid}", json={"active": True, "password": "NewPass456!"})
     assert login_status(client, "temp@example.com", "employee", "NewPass456!").status_code == 200
 
-    me = users["admin@helpdesk.local"]["id"]
+    me = users["admin@grounddesk.com"]["id"]
     assert admin.patch(f"/users/{me}", json={"active": False}).status_code == 409
 
 
@@ -147,8 +175,8 @@ def test_reset_demo_passwords(client, monkeypatch):
     monkeypatch.setattr(seed_module.settings, "demo_password", "Rotated#2026")
     with SessionLocal() as db:
         assert seed_module.reset_demo_passwords(db) == 12
-    assert login_status(client, "admin@helpdesk.local", "admin").status_code == 401  # old password rejected
-    assert login_status(client, "admin@helpdesk.local", "admin", "Rotated#2026").status_code == 200
+    assert login_status(client, "admin@grounddesk.com", "admin").status_code == 401  # old password rejected
+    assert login_status(client, "admin@grounddesk.com", "admin", "Rotated#2026").status_code == 200
 
     monkeypatch.setattr(seed_module.settings, "demo_password", PASSWORD)  # restore for later tests
     with SessionLocal() as db:
@@ -160,6 +188,6 @@ def test_seed_skips_accounts_without_a_demo_password(monkeypatch):
     from app.database import SessionLocal
 
     monkeypatch.setattr(seed_module.settings, "demo_password", "")
-    monkeypatch.setattr(seed_module, "EMPLOYEES", [("New Person", "new.person@helpdesk.local")])
+    monkeypatch.setattr(seed_module, "EMPLOYEES", [("New Person", "new.person@grounddesk.com")])
     with SessionLocal() as db:
         assert seed_module.seed(db)["users"] == 0

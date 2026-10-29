@@ -6,9 +6,9 @@ import pytest
 from app.assignment import choose_department
 from app.models import Category, Ticket
 
-VIKRAM = "vikram.singh@helpdesk.local"
-ARJUN = "arjun.mehta@helpdesk.local"
-PRIYA = "priya.nair@helpdesk.local"
+VIKRAM = "vikram.singh@grounddesk.com"
+ARJUN = "arjun.mehta@grounddesk.com"
+PRIYA = "priya.nair@grounddesk.com"
 
 
 def make_ticket(client, **overrides):

@@ -12,7 +12,7 @@ def test_stats_counts_statuses_ai_outcomes_and_departments(employee, login, admi
 
     fan = make(employee, title="Laptop fan making grinding noise", description="The fan in my laptop makes a loud grinding noise.", category="Hardware")
     employee.post(f"/tickets/{fan}/feedback", json={"resolved": False})
-    tech = login("vikram.singh@helpdesk.local")
+    tech = login("vikram.singh@grounddesk.com")
     tech.patch(f"/tickets/{fan}/status", json={"status": "IN_PROGRESS"})
     tech.patch(f"/tickets/{fan}/status", json={"status": "PENDING_APPROVAL", "note": "Replaced the fan"})
     employee.post(f"/tickets/{fan}/closure", json={"approved": True})
@@ -40,4 +40,4 @@ def test_stats_counts_statuses_ai_outcomes_and_departments(employee, login, admi
 
 def test_stats_are_admin_only(employee, login):
     assert employee.get("/stats").status_code == 403
-    assert login("vikram.singh@helpdesk.local").get("/stats").status_code == 403
+    assert login("vikram.singh@grounddesk.com").get("/stats").status_code == 403

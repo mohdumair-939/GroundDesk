@@ -2,7 +2,7 @@
 
 import pytest
 
-ARJUN = "arjun.mehta@helpdesk.local"  # first Network Support technician
+ARJUN = "arjun.mehta@grounddesk.com"  # first Network Support technician
 
 
 # Scenario 1: a valid ticket is created with a code, OPEN status, the requester and a history entry.

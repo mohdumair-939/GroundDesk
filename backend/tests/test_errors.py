@@ -18,7 +18,7 @@ def test_unhandled_error_returns_json_500_with_cors(monkeypatch):
     with TestClient(app, raise_server_exceptions=False) as client:
         r = client.post(
             "/auth/login",
-            json={"email": "admin@helpdesk.local", "password": "whatever-123", "role": "admin"},
+            json={"email": "admin@grounddesk.com", "password": "whatever-123", "role": "admin"},
             headers={"Origin": ORIGIN},
         )
     assert r.status_code == 500

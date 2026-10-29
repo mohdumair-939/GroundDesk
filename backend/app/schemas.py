@@ -22,7 +22,7 @@ LoginEmail = Annotated[str, StringConstraints(strip_whitespace=True, to_lower=Tr
 class LoginIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    # Plain text: sign-in only has to match a stored account (seeded staff use @helpdesk.local).
+    # Plain text: sign-in only has to match a stored account (technicians and admins use STAFF_DOMAIN).
     email: LoginEmail
     password: str
     role: Role  # the login option the user picked; must match the account's role

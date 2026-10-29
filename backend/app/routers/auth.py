@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import Role, User
+from app.models import STAFF_DOMAIN, STAFF_ROLES, Role, User, is_staff_email
 from app.schemas import LoginIn, RegisterIn, TokenOut, UserOut
 from app.security import create_token, current_user, hash_password, verify_password
 
@@ -27,6 +27,11 @@ def login(payload: LoginIn, db: Session = Depends(get_db)):
             f"This account can't sign in through the {ROLE_LABELS[payload.role]} login. "
             f"Please use the {ROLE_LABELS[user.role]} login.",
         )
+    if user.role in STAFF_ROLES and not is_staff_email(user.email):
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            f"{ROLE_LABELS[user.role]} accounts must use an @{STAFF_DOMAIN} email. Contact the help desk admin.",
+        )
     if not user.active:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "This account has been disabled. Contact the help desk admin.")
     return TokenOut(access_token=create_token(user), user=user)
@@ -39,6 +44,8 @@ def register(payload: RegisterIn, db: Session = Depends(get_db)):
     # Emails are unique across all roles, so staff emails can never become employee accounts.
     if db.scalars(select(User).where(User.email == email)).first() is not None:
         raise HTTPException(status.HTTP_409_CONFLICT, "An account with this email already exists")
+    if is_staff_email(email):
+        raise HTTPException(422, f"@{STAFF_DOMAIN} emails are reserved for technician and admin accounts")
     try:
         validate_email(email, check_deliverability=False)
     except EmailNotValidError as exc:

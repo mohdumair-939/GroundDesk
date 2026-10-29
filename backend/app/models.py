@@ -49,6 +49,15 @@ class Role(str, enum.Enum):
     ADMIN = "admin"
 
 
+# Technician and admin accounts must use this email domain; employees may use any other.
+STAFF_DOMAIN = "grounddesk.com"
+STAFF_ROLES = (Role.TECHNICIAN, Role.ADMIN)
+
+
+def is_staff_email(email: str) -> bool:
+    return email.strip().lower().endswith(f"@{STAFF_DOMAIN}")
+
+
 def _str_enum(enum_cls: type[enum.Enum], name: str) -> Enum:
     return Enum(
         enum_cls,

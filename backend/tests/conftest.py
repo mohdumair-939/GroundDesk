@@ -76,7 +76,7 @@ def clean_tables():
     tables = ", ".join(t.name for t in Base.metadata.sorted_tables if t.name not in KEEP_TABLES)
     with engine.begin() as conn:
         conn.execute(text(f"TRUNCATE {tables} RESTART IDENTITY CASCADE"))
-        conn.execute(text("DELETE FROM users WHERE email NOT LIKE '%@helpdesk.local'"))
+        conn.execute(text("DELETE FROM users WHERE email NOT LIKE '%@grounddesk.com' AND email NOT LIKE '%@helpdesk.local'"))
         conn.execute(text("UPDATE users SET active = true"))
     yield
 
@@ -113,7 +113,7 @@ def client():
         yield c
 
 
-ROLES = {"admin@helpdesk.local": "admin", "asha.rao@helpdesk.local": "employee", "ravi.kumar@helpdesk.local": "employee"}
+ROLES = {"admin@grounddesk.com": "admin", "asha.rao@helpdesk.local": "employee", "ravi.kumar@helpdesk.local": "employee"}
 
 
 @pytest.fixture
@@ -142,7 +142,7 @@ def employee(login):
 
 @pytest.fixture
 def admin(login):
-    return login("admin@helpdesk.local")
+    return login("admin@grounddesk.com")
 
 
 VALID_TICKET = {
