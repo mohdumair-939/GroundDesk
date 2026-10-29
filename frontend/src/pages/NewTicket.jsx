@@ -17,17 +17,17 @@ function validate(form) {
 }
 
 const inputClass = (hasError) =>
-  `mt-1 block w-full rounded-md border bg-white px-3 py-2 text-sm ${hasError ? 'border-red-400' : 'border-slate-300'}`
+  `field mt-1.5 block w-full px-3 py-2 text-sm ${hasError ? 'border-red-400 focus:ring-red-500/15' : ''}`
 
 function Field({ label, name, error, hint, children }) {
   return (
     <label className="block" htmlFor={name}>
-      <span className="text-sm font-medium text-slate-700">{label}</span>
+      <span className="text-sm font-medium text-stone-700">{label}</span>
       {children}
       {error ? (
         <span className="mt-1 block text-xs text-red-600">{error}</span>
       ) : (
-        hint && <span className="mt-1 block text-xs text-slate-400">{hint}</span>
+        hint && <span className="mt-1 block text-xs text-stone-400">{hint}</span>
       )}
     </label>
   )
@@ -62,12 +62,12 @@ export default function NewTicket() {
 
   return (
     <section className="mx-auto max-w-2xl">
-      <h1 className="text-xl font-semibold">Raise a ticket</h1>
-      <p className="mt-1 text-sm text-slate-500">
+      <h1 className="page-title">Raise a ticket</h1>
+      <p className="mt-1 text-sm text-stone-500">
         Describe the problem. The help desk will suggest troubleshooting steps from its knowledge base.
       </p>
 
-      <form onSubmit={onSubmit} noValidate className="mt-6 space-y-4 rounded-lg border border-slate-200 bg-white p-5">
+      <form onSubmit={onSubmit} noValidate className="card mt-6 space-y-5 p-6">
         <Field label="Title" name="title" error={errors.title} hint={`${form.title.trim().length}/120`}>
           <input
             id="title"
@@ -118,14 +118,14 @@ export default function NewTicket() {
           <button
             type="button"
             onClick={() => navigate(-1)}
-            className="rounded-md px-3 py-2 text-sm text-slate-600 hover:bg-slate-100"
+            className="rounded-md px-3 py-2 text-sm font-medium text-stone-600 transition-colors hover:bg-stone-100 hover:text-stone-900"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={submitting}
-            className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-60"
+            className="btn-primary px-4 py-2 text-sm font-medium disabled:opacity-50"
           >
             {submitting ? 'Submitting…' : 'Submit ticket'}
           </button>

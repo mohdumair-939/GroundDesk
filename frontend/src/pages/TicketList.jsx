@@ -2,12 +2,16 @@ import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { listTickets } from '../api'
 import { useAuth } from '../auth'
-import { PriorityBadge, StatusBadge } from '../components/Badges'
+import { CategoryTag, PriorityBadge, StatusBadge } from '../components/Badges'
+import { STATUS_COLORS } from '../colors'
+import Hero, { heroButton } from '../components/Hero'
 import { Empty, ErrorBox, Loading } from '../components/States'
 import { CATEGORIES, STATUSES, STATUS_LABELS, formatDate } from '../constants'
 import { useAsync } from '../useAsync'
 
-const selectClass = 'rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm'
+const count = (list, ...statuses) => (list ? list.filter((t) => statuses.includes(t.status)).length : null)
+
+const selectClass = 'field px-2.5 py-1.5 text-sm'
 
 export default function TicketList() {
   const { user } = useAuth()
@@ -18,23 +22,35 @@ export default function TicketList() {
     () => listTickets(filters),
     [filters.status, filters.category, filters.q],
   )
+  const mine = useAsync(() => (isAdmin ? Promise.resolve(null) : listTickets({})), [isAdmin])
   const set = (key) => (e) => setFilters((f) => ({ ...f, [key]: e.target.value }))
 
   return (
     <section>
-      <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold">{isAdmin ? 'All tickets' : 'My tickets'}</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            {isAdmin ? 'Every ticket in the help desk. Open one to follow up, reassign or close it.' : 'Tickets you have raised and their current status.'}
-          </p>
+      {isAdmin ? (
+        <div className="mb-4">
+          <h1 className="page-title">All tickets</h1>
+          <p className="mt-1 text-sm text-stone-500">Every ticket in the help desk. Open one to follow up, reassign or close it.</p>
         </div>
-        {!isAdmin && (
-          <Link to="/new" className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-700">
-            + New ticket
-          </Link>
-        )}
-      </div>
+      ) : (
+        <>
+          <Hero
+            subtitle="Something not working? Describe it and you'll get troubleshooting steps from the knowledge base straight away."
+            action={
+              <Link to="/new" className={heroButton}>
+                <span aria-hidden="true">+</span> Raise a ticket
+              </Link>
+            }
+            stats={[
+              { label: 'Waiting on AI or you', value: count(mine.data, 'OPEN', 'SUGGESTION_PROVIDED'), tone: 'violet' },
+              { label: 'With a technician', value: count(mine.data, 'ESCALATED', 'ASSIGNED', 'IN_PROGRESS'), tone: 'blue' },
+              { label: 'Needs your approval', value: count(mine.data, 'PENDING_APPROVAL'), tone: 'teal' },
+              { label: 'Resolved', value: count(mine.data, 'RESOLVED', 'CLOSED'), tone: 'emerald' },
+            ]}
+          />
+          <h2 className="mb-3 text-base font-semibold text-stone-900">My tickets</h2>
+        </>
+      )}
 
       <div className="mb-4 flex flex-wrap gap-2">
         <input
@@ -66,7 +82,7 @@ export default function TicketList() {
         <Empty>
           No tickets found.{' '}
           {!isAdmin && (
-            <Link to="/new" className="font-medium text-slate-900 underline">
+            <Link to="/new" className="font-medium text-brand-700 underline decoration-brand-200 underline-offset-4 hover:decoration-brand-700">
               Raise one
             </Link>
           )}
@@ -74,22 +90,22 @@ export default function TicketList() {
       )}
 
       {tickets && tickets.length > 0 && (
-        <ul className={`divide-y divide-slate-200 overflow-hidden rounded-lg border border-slate-200 bg-white ${loading ? 'opacity-60' : ''}`}>
+        <ul className={`divide-y divide-stone-200 overflow-hidden card ${loading ? 'opacity-60' : ''}`}>
           {tickets.map((t) => (
-            <li key={t.id}>
-              <Link to={`/tickets/${t.id}`} className="flex flex-col gap-1 px-4 py-3 hover:bg-slate-50 sm:flex-row sm:items-center sm:gap-4">
-                <span className="w-20 shrink-0 font-mono text-xs text-slate-500">{t.ticket_code}</span>
+            <li key={t.id} className={`border-l-4 ${STATUS_COLORS[t.status].edge}`}>
+              <Link to={`/tickets/${t.id}`} className="flex flex-col gap-1 px-5 py-3.5 transition-colors hover:bg-stone-50 sm:flex-row sm:items-center sm:gap-4">
+                <span className="w-20 shrink-0 font-mono text-xs text-stone-500">{t.ticket_code}</span>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate font-medium">{t.title}</span>
+                  <span className="block truncate font-medium text-stone-900">{t.title}</span>
                   {isAdmin && (
-                    <span className="block truncate text-xs text-slate-500">
+                    <span className="block truncate text-xs text-stone-500">
                       {t.user_name}
                       {t.assignment && ` → ${t.assignment.technician?.name ?? t.assignment.department.name}`}
                     </span>
                   )}
                 </span>
-                <span className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                  <span>{t.category}</span>
+                <span className="flex flex-wrap items-center gap-2 text-xs text-stone-500">
+                  <CategoryTag category={t.category} />
                   <PriorityBadge priority={t.priority} />
                   <StatusBadge status={t.status} />
                   <span className="hidden md:inline">{formatDate(t.created_at)}</span>

@@ -26,7 +26,7 @@ export default function ServerStatus() {
   }, [state, tries])
 
   const styles = {
-    checking: ['bg-slate-300 animate-pulse', 'Connecting to the server…'],
+    checking: ['bg-stone-300 animate-pulse', 'Connecting to the server…'],
     waking: ['bg-amber-400 animate-pulse', 'Server is starting up (can take up to a minute after a quiet period)…'],
     degraded: ['bg-red-500', 'Server is up but cannot reach its database. Please try again shortly.'],
     ready: ['bg-emerald-500', 'Server ready'],
@@ -34,7 +34,7 @@ export default function ServerStatus() {
   const [dot, text] = styles[state]
 
   return (
-    <p className="flex items-center justify-center gap-2 text-xs text-slate-500" role="status" aria-live="polite">
+    <p className="flex items-center gap-2 text-xs text-stone-500" role="status" aria-live="polite">
       <span className={`inline-block h-2 w-2 rounded-full ${dot}`} aria-hidden="true" />
       {text}
     </p>

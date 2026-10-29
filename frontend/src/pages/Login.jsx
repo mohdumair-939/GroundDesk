@@ -1,42 +1,18 @@
 import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router'
 import { useAuth } from '../auth'
+import AuthLayout from '../components/AuthLayout'
 import PasswordInput from '../components/PasswordInput'
 import ServerStatus from '../components/ServerStatus'
 import { ErrorBox } from '../components/States'
+import { ROLE_COLORS } from '../colors'
 import { ROLE_LABELS } from '../constants'
 
 const OPTIONS = [
-  {
-    role: 'employee',
-    title: 'Login as Employee',
-    text: 'Raise IT tickets and follow their progress.',
-    icon: 'M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.5 20.1a7.5 7.5 0 0 1 15 0',
-    active: 'border-sky-500 bg-sky-50 ring-sky-500',
-  },
-  {
-    role: 'technician',
-    title: 'Login as Technician',
-    text: 'Work on the tickets assigned to you.',
-    icon: 'M11.42 15.17 17.25 21A2.65 2.65 0 0 0 21 17.25l-5.88-5.88M11.42 15.17l2.5-3.03c.31-.38.73-.62 1.2-.76.55-.16 1.16-.18 1.73-.13a4.5 4.5 0 0 0 4.46-6.24l-3.28 3.28a3 3 0 0 1-2.25-2.25l3.28-3.28a4.5 4.5 0 0 0-6.24 4.46c.07.85-.06 1.79-.72 2.33l-.09.07m3.1 3.65-4.66 5.66a2.55 2.55 0 1 1-3.58-3.58l5.66-4.66',
-    active: 'border-orange-500 bg-orange-50 ring-orange-500',
-  },
-  {
-    role: 'admin',
-    title: 'Login as Admin',
-    text: 'Oversee all tickets, staff and accounts.',
-    icon: 'M9 12.75 11.25 15 15 9.75m-3-7.04A11.96 11.96 0 0 1 3.6 6 12 12 0 0 0 3 9.75c0 5.6 3.82 10.3 9 11.62 5.18-1.33 9-6.03 9-11.62 0-1.31-.21-2.57-.6-3.75h-.15c-3.2 0-6.1-1.25-8.25-3.29Z',
-    active: 'border-violet-500 bg-violet-50 ring-violet-500',
-  },
+  { role: 'employee', text: 'Raise IT tickets and follow their progress.' },
+  { role: 'technician', text: 'Work on the tickets assigned to you.' },
+  { role: 'admin', text: 'Oversee all tickets, staff and accounts.' },
 ]
-
-function Icon({ path }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="h-6 w-6" aria-hidden="true">
-      <path strokeLinecap="round" strokeLinejoin="round" d={path} />
-    </svg>
-  )
-}
 
 export default function Login() {
   const { login } = useAuth()
@@ -67,78 +43,71 @@ export default function Login() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-10">
-      <div className="w-full max-w-3xl">
-        <div className="text-center">
-          <h1 className="text-2xl font-semibold text-slate-900">GroundDesk</h1>
-          <p className="mt-1 text-sm text-slate-500">AI help desk that only answers from verified knowledge</p>
-          <div className="mt-3">
-            <ServerStatus />
-          </div>
-        </div>
+    <AuthLayout role={role}>
+      <h2 className="text-2xl font-semibold tracking-tight text-stone-900">Sign in</h2>
+      <p className="mt-1.5 text-sm text-stone-500">{OPTIONS.find((o) => o.role === role).text}</p>
 
-        <div className="mt-8 grid gap-3 sm:grid-cols-3" role="radiogroup" aria-label="Choose how to sign in">
-          {OPTIONS.map((o) => {
-            const selected = o.role === role
-            return (
-              <button
-                key={o.role}
-                type="button"
-                role="radio"
-                aria-checked={selected}
-                onClick={() => choose(o.role)}
-                className={`flex items-start gap-3 rounded-lg border bg-white p-4 text-left transition ${
-                  selected ? `${o.active} ring-1` : 'border-slate-200 hover:border-slate-300'
-                }`}
-              >
-                <span className={selected ? 'text-slate-900' : 'text-slate-400'}>
-                  <Icon path={o.icon} />
-                </span>
-                <span>
-                  <span className="block font-medium text-slate-900">{o.title}</span>
-                  <span className="mt-0.5 block text-xs text-slate-500">{o.text}</span>
-                </span>
-              </button>
-            )
-          })}
-        </div>
-
-        <form onSubmit={onSubmit} className="mx-auto mt-6 max-w-md space-y-4 rounded-lg border border-slate-200 bg-white p-6">
-          <h2 className="text-lg font-semibold">{ROLE_LABELS[role]} sign in</h2>
-          <label className="block">
-            <span className="text-sm font-medium text-slate-700">Email</span>
-            <input
-              type="email"
-              required
-              autoComplete="username"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="mt-1 block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
-            />
-          </label>
-          <PasswordInput label="Password" required value={password} onChange={(e) => setPassword(e.target.value)} />
-          <ErrorBox error={error} />
-          <button
-            type="submit"
-            disabled={busy}
-            className="w-full rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-60"
-          >
-            {busy ? 'Signing in…' : `Sign in as ${ROLE_LABELS[role]}`}
-          </button>
-          {role === 'employee' ? (
-            <p className="text-center text-sm text-slate-500">
-              New here?{' '}
-              <Link to="/register" className="font-medium text-slate-900 underline">
-                Create an employee account
-              </Link>
-            </p>
-          ) : (
-            <p className="text-center text-xs text-slate-400">
-              {ROLE_LABELS[role]} accounts are created by the help desk. Contact your admin if you cannot sign in.
-            </p>
-          )}
-        </form>
+      <div
+        className="mt-6 grid grid-cols-3 gap-1 rounded-lg border border-stone-200 bg-stone-100 p-1"
+        role="radiogroup"
+        aria-label="Choose how to sign in"
+      >
+        {OPTIONS.map((o) => {
+          const selected = o.role === role
+          return (
+            <button
+              key={o.role}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              onClick={() => choose(o.role)}
+              className={`rounded-md px-2 py-1.5 text-sm font-medium transition-colors ${
+                selected ? `bg-white ${ROLE_COLORS[o.role].ink} shadow-[0_1px_2px_rgb(28_25_23/0.1)] ring-1 ring-stone-200` : 'text-stone-500 hover:text-stone-800'
+              }`}
+            >
+              {ROLE_LABELS[o.role]}
+            </button>
+          )
+        })}
       </div>
-    </div>
+
+      <form onSubmit={onSubmit} className="mt-6 space-y-4">
+        <label className="block">
+          <span className="text-sm font-medium text-stone-700">Work email</span>
+          <input
+            type="email"
+            required
+            autoComplete="username"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="field mt-1.5 block w-full px-3 py-2 text-sm"
+            placeholder="name@company.com"
+          />
+        </label>
+        <PasswordInput label="Password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+        <ErrorBox error={error} />
+        <button type="submit" disabled={busy} className={`btn-solid w-full px-4 py-2 text-sm font-medium disabled:opacity-50 ${ROLE_COLORS[role].button}`}>
+          {busy ? 'Signing in…' : `Continue as ${ROLE_LABELS[role].toLowerCase()}`}
+        </button>
+      </form>
+
+      <div className="mt-6 border-t border-stone-200 pt-5 text-sm">
+        {role === 'employee' ? (
+          <p className="text-stone-500">
+            New here?{' '}
+            <Link to="/register" className="font-medium text-brand-700 underline decoration-brand-200 underline-offset-4 hover:decoration-brand-700">
+              Create an employee account
+            </Link>
+          </p>
+        ) : (
+          <p className="text-stone-500">
+            {ROLE_LABELS[role]} accounts are created by the help desk. Contact your admin if you cannot sign in.
+          </p>
+        )}
+        <div className="mt-4">
+          <ServerStatus />
+        </div>
+      </div>
+    </AuthLayout>
   )
 }

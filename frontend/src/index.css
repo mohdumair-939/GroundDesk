@@ -1,1 +1,61 @@
 @import "tailwindcss";
+
+@theme {
+  --font-sans: "Geist", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, monospace;
+  --font-serif: "Instrument Serif", ui-serif, Georgia, serif;
+
+  /* Pine green: the single brand colour. Everything else is warm neutral (stone). */
+  --color-brand-50: #f0f6f3;
+  --color-brand-100: #dcebe3;
+  --color-brand-200: #b9d6c7;
+  --color-brand-300: #8bbaa3;
+  --color-brand-500: #3d8467;
+  --color-brand-600: #2c6b52;
+  --color-brand-700: #235843;
+  --color-brand-800: #1c4636;
+  --color-brand-900: #14332a;
+  --color-brand-950: #0c211b;
+
+  --color-paper: #f7f6f2;
+}
+
+body {
+  @apply bg-paper font-sans text-stone-800 antialiased;
+  font-feature-settings: "ss01", "cv11";
+}
+
+::selection {
+  @apply bg-brand-200 text-brand-950;
+}
+
+:focus-visible {
+  @apply outline-2 outline-offset-2 outline-brand-600;
+}
+
+@layer components {
+  .card {
+    @apply rounded-lg border border-stone-200 bg-white shadow-[0_1px_2px_rgb(28_25_23/0.04)];
+  }
+
+  .btn-primary {
+    @apply rounded-md bg-brand-700 text-white shadow-[inset_0_1px_0_rgb(255_255_255/0.12),0_1px_2px_rgb(12_33_27/0.2)] transition-colors hover:bg-brand-800;
+  }
+
+  /* Coloured solid button; pair with a bg-* / hover:bg-* utility for its meaning. */
+  .btn-solid {
+    @apply rounded-md text-white shadow-[inset_0_1px_0_rgb(255_255_255/0.15),0_1px_2px_rgb(28_25_23/0.2)] transition-colors;
+  }
+
+  .field {
+    @apply rounded-md border border-stone-300 bg-white shadow-[0_1px_2px_rgb(28_25_23/0.04)] transition-colors placeholder:text-stone-400 hover:border-stone-400 focus:border-brand-600 focus:ring-3 focus:ring-brand-600/15 focus:outline-none;
+  }
+
+  .page-title {
+    @apply text-[1.375rem] leading-tight font-semibold tracking-tight text-stone-900;
+  }
+
+  .eyebrow {
+    @apply text-[11px] font-medium tracking-[0.08em] text-stone-500 uppercase;
+  }
+}

@@ -3,19 +3,19 @@ import { CATEGORIES, PRIORITIES } from '../constants'
 import { listTechnicians } from '../api'
 import { useAsync } from '../useAsync'
 
-const textarea = 'mt-1 block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm'
-const select = 'rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm'
-const btn = 'rounded-md px-3 py-1.5 text-sm font-medium text-white disabled:opacity-60'
+const textarea = 'mt-1 block w-full field px-3 py-2 text-sm'
+const select = 'field px-2 py-1.5 text-sm'
+const btn = 'px-3 py-1.5 text-sm font-medium disabled:opacity-50'
 
 function Card({ title, tone = 'slate', children }) {
   const tones = {
-    slate: 'border-slate-200',
-    teal: 'border-teal-300 bg-teal-50/40',
-    violet: 'border-violet-200',
+    slate: '',
+    teal: 'border-teal-200 bg-teal-50',
+    violet: 'border-t-4 border-t-violet-500',
   }
   return (
-    <div className={`rounded-lg border bg-white p-5 ${tones[tone]}`}>
-      <h2 className="text-sm font-semibold text-slate-900">{title}</h2>
+    <div className={`card p-5 ${tones[tone]}`}>
+      <h2 className="text-sm font-semibold text-stone-900">{title}</h2>
       <div className="mt-3">{children}</div>
     </div>
   )
@@ -29,8 +29,8 @@ export function ClosurePanel({ ticket, onSubmit, busy }) {
 
   return (
     <Card title="Your technician marked this ticket as solved" tone="teal">
-      {resolution?.note && <p className="text-sm text-slate-700">{resolution.note}</p>}
-      <p className="mt-3 text-sm font-medium text-slate-800">Is the problem fixed?</p>
+      {resolution?.note && <p className="text-sm text-stone-700">{resolution.note}</p>}
+      <p className="mt-3 text-sm font-medium text-stone-800">Is the problem fixed?</p>
       {rejecting && (
         <textarea
           value={comment}
@@ -45,10 +45,10 @@ export function ClosurePanel({ ticket, onSubmit, busy }) {
       <div className="mt-3 flex flex-wrap gap-2">
         {!rejecting ? (
           <>
-            <button onClick={() => onSubmit(true, '')} disabled={busy} className={`${btn} bg-emerald-600 hover:bg-emerald-500`}>
+            <button onClick={() => onSubmit(true, '')} disabled={busy} className={`${btn} btn-solid bg-emerald-600 hover:bg-emerald-700`}>
               {busy ? 'Saving…' : 'Yes, close the ticket'}
             </button>
-            <button onClick={() => setRejecting(true)} disabled={busy} className={`${btn} bg-amber-600 hover:bg-amber-500`}>
+            <button onClick={() => setRejecting(true)} disabled={busy} className={`${btn} btn-solid bg-amber-500 hover:bg-amber-600`}>
               No, it is not fixed
             </button>
           </>
@@ -57,11 +57,11 @@ export function ClosurePanel({ ticket, onSubmit, busy }) {
             <button
               onClick={() => onSubmit(false, comment.trim())}
               disabled={busy || comment.trim().length < 3}
-              className={`${btn} bg-amber-600 hover:bg-amber-500`}
+              className={`${btn} btn-solid bg-amber-500 hover:bg-amber-600`}
             >
               {busy ? 'Sending…' : 'Send back to technician'}
             </button>
-            <button onClick={() => setRejecting(false)} className="rounded-md px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-100">
+            <button onClick={() => setRejecting(false)} className="rounded-md px-3 py-1.5 text-sm font-medium text-stone-600 transition-colors hover:bg-stone-100 hover:text-stone-900">
               Cancel
             </button>
           </>
@@ -77,7 +77,7 @@ export function TechnicianPanel({ ticket, onMove, busy }) {
   if (ticket.status === 'ASSIGNED') {
     return (
       <Card title="Technician actions">
-        <button onClick={() => onMove('IN_PROGRESS', 'Technician started work')} disabled={busy} className={`${btn} bg-blue-600 hover:bg-blue-500`}>
+        <button onClick={() => onMove('IN_PROGRESS', 'Technician started work')} disabled={busy} className={`${btn} btn-solid bg-blue-600 hover:bg-blue-700`}>
           {busy ? 'Starting…' : 'Start work'}
         </button>
       </Card>
@@ -86,14 +86,14 @@ export function TechnicianPanel({ ticket, onMove, busy }) {
   if (ticket.status === 'IN_PROGRESS') {
     return (
       <Card title="Technician actions">
-        <label className="block text-sm text-slate-700" htmlFor="resolution">
+        <label className="block text-sm text-stone-700" htmlFor="resolution">
           Resolution note (shown to the employee, who approves the closure)
         </label>
         <textarea id="resolution" rows={2} maxLength={400} value={note} onChange={(e) => setNote(e.target.value)} className={textarea} />
         <button
           onClick={() => onMove('PENDING_APPROVAL', note.trim())}
           disabled={busy || note.trim().length < 3}
-          className={`${btn} mt-3 bg-teal-600 hover:bg-teal-500`}
+          className={`${btn} mt-3 btn-solid bg-teal-600 hover:bg-teal-700`}
         >
           {busy ? 'Saving…' : 'Mark solved'}
         </button>
@@ -121,7 +121,7 @@ export function AdminPanel({ ticket, act, busy }) {
   return (
     <Card title="Admin controls" tone="violet">
       <div className="flex flex-wrap items-end gap-2">
-        <label className="text-xs text-slate-500">
+        <label className="text-xs text-stone-500">
           Priority
           <select value={priority} onChange={(e) => setPriority(e.target.value)} className={`${select} mt-1 block`}>
             {PRIORITIES.map((p) => (
@@ -129,7 +129,7 @@ export function AdminPanel({ ticket, act, busy }) {
             ))}
           </select>
         </label>
-        <label className="text-xs text-slate-500">
+        <label className="text-xs text-stone-500">
           Category
           <select value={category} onChange={(e) => setCategory(e.target.value)} className={`${select} mt-1 block`}>
             {CATEGORIES.map((c) => (
@@ -140,15 +140,15 @@ export function AdminPanel({ ticket, act, busy }) {
         <button
           onClick={() => act('update', { priority, category })}
           disabled={busy || !changed}
-          className={`${btn} bg-slate-900 hover:bg-slate-700`}
+          className={`${btn} btn-primary`}
         >
           Save
         </button>
       </div>
 
       {canReassign && (
-        <div className="mt-4 flex flex-wrap items-end gap-2 border-t border-slate-100 pt-4">
-          <label className="text-xs text-slate-500">
+        <div className="mt-4 flex flex-wrap items-end gap-2 border-t border-stone-200 pt-4">
+          <label className="text-xs text-stone-500">
             Reassign to
             <select value={techId} onChange={(e) => setTechId(e.target.value)} className={`${select} mt-1 block`}>
               <option value="">Choose a technician…</option>
@@ -159,27 +159,27 @@ export function AdminPanel({ ticket, act, busy }) {
               ))}
             </select>
           </label>
-          <button onClick={() => act('reassign', { techId, note: reason })} disabled={busy || !techId} className={`${btn} bg-orange-600 hover:bg-orange-500`}>
+          <button onClick={() => act('reassign', { techId, note: reason })} disabled={busy || !techId} className={`${btn} btn-solid bg-orange-500 hover:bg-orange-600`}>
             Reassign
           </button>
         </div>
       )}
 
       {(canClose || canReopen) && (
-        <div className="mt-4 border-t border-slate-100 pt-4">
-          <label className="block text-xs text-slate-500" htmlFor="admin-reason">
+        <div className="mt-4 border-t border-stone-200 pt-4">
+          <label className="block text-xs text-stone-500" htmlFor="admin-reason">
             Reason (required to {canClose ? 'close' : 'reopen'}
             {canReassign && '; also used as the reassignment note'})
           </label>
           <textarea id="admin-reason" rows={2} maxLength={400} value={reason} onChange={(e) => setReason(e.target.value)} className={textarea} />
           <div className="mt-2 flex flex-wrap gap-2">
             {canClose && (
-              <button onClick={() => act('close', { note: reason })} disabled={busy || reason.trim().length < 3} className={`${btn} bg-red-600 hover:bg-red-500`}>
+              <button onClick={() => act('close', { note: reason })} disabled={busy || reason.trim().length < 3} className={`${btn} btn-solid bg-red-600 hover:bg-red-700`}>
                 Force close
               </button>
             )}
             {canReopen && (
-              <button onClick={() => act('reopen', { note: reason })} disabled={busy || reason.trim().length < 3} className={`${btn} bg-blue-600 hover:bg-blue-500`}>
+              <button onClick={() => act('reopen', { note: reason })} disabled={busy || reason.trim().length < 3} className={`${btn} btn-solid bg-blue-600 hover:bg-blue-700`}>
                 Reopen
               </button>
             )}
@@ -199,13 +199,13 @@ export function NoteForm({ onSubmit, busy }) {
         e.preventDefault()
         if (await onSubmit(note.trim())) setNote('')
       }}
-      className="mt-4 border-t border-slate-100 pt-4"
+      className="mt-4 border-t border-stone-200 pt-4"
     >
-      <label className="block text-sm font-medium text-slate-700" htmlFor="note">
+      <label className="block text-sm font-medium text-stone-700" htmlFor="note">
         Add a note
       </label>
       <textarea id="note" rows={2} maxLength={500} value={note} onChange={(e) => setNote(e.target.value)} className={textarea} />
-      <button type="submit" disabled={busy || note.trim().length < 3} className={`${btn} mt-2 bg-slate-900 hover:bg-slate-700`}>
+      <button type="submit" disabled={busy || note.trim().length < 3} className={`${btn} mt-2 btn-primary`}>
         Add note
       </button>
     </form>

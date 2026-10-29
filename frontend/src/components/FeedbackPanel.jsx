@@ -11,8 +11,8 @@ export default function FeedbackPanel({ answered, onSubmit, busy }) {
   }
 
   return (
-    <div className="mt-4 border-t border-slate-100 pt-4">
-      <p className="text-sm font-medium text-slate-800">
+    <div className="mt-4 border-t border-stone-200 pt-4">
+      <p className="text-sm font-medium text-stone-800">
         {answered ? 'Did this solve your problem?' : 'Send this ticket to a technician?'}
       </p>
       <textarea
@@ -21,7 +21,7 @@ export default function FeedbackPanel({ answered, onSubmit, busy }) {
         maxLength={500}
         rows={2}
         placeholder="Optional comment (what you tried, what happened)"
-        className="mt-2 block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
+        className="mt-2 block w-full field px-3 py-2 text-sm"
         aria-label="Feedback comment"
       />
       <div className="mt-3 flex flex-wrap gap-2">
@@ -29,7 +29,7 @@ export default function FeedbackPanel({ answered, onSubmit, busy }) {
           <button
             onClick={() => submit(true)}
             disabled={busy}
-            className="rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-500 disabled:opacity-60"
+            className="btn-solid bg-emerald-600 px-3 py-1.5 hover:bg-emerald-700 text-sm font-medium disabled:opacity-50"
           >
             {busy && choice === true ? 'Saving…' : 'Yes, it is fixed'}
           </button>
@@ -37,7 +37,7 @@ export default function FeedbackPanel({ answered, onSubmit, busy }) {
         <button
           onClick={() => submit(false)}
           disabled={busy}
-          className="rounded-md bg-amber-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-amber-500 disabled:opacity-60"
+          className="btn-solid bg-amber-500 px-3 py-1.5 hover:bg-amber-600 text-sm font-medium disabled:opacity-50"
         >
           {busy && choice === false ? 'Escalating…' : answered ? 'No, escalate to a technician' : 'Escalate to a technician'}
         </button>

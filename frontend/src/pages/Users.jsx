@@ -3,10 +3,11 @@ import { listUsers, updateUser } from '../api'
 import { useAuth } from '../auth'
 import PasswordInput from '../components/PasswordInput'
 import { Empty, ErrorBox, Loading } from '../components/States'
+import { ROLE_COLORS } from '../colors'
 import { ROLE_LABELS, formatDate } from '../constants'
 import { useAsync } from '../useAsync'
 
-const select = 'rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm'
+const select = 'field px-2.5 py-1.5 text-sm'
 
 function PasswordReset({ onSave, onCancel, busy }) {
   const [password, setPassword] = useState('')
@@ -29,10 +30,10 @@ function PasswordReset({ onSave, onCancel, busy }) {
           onChange={(e) => setPassword(e.target.value)}
         />
       </div>
-      <button disabled={busy || password.length < 8} className="rounded-md bg-slate-900 px-3 py-1 text-sm font-medium text-white disabled:opacity-60">
+      <button disabled={busy || password.length < 8} className="btn-primary px-3 py-1 text-sm font-medium disabled:opacity-50">
         Save
       </button>
-      <button type="button" onClick={onCancel} className="rounded-md px-2 py-1 text-sm text-slate-600 hover:bg-slate-100">
+      <button type="button" onClick={onCancel} className="rounded-md px-2 py-1 text-sm font-medium text-stone-600 transition-colors hover:bg-stone-100 hover:text-stone-900">
         Cancel
       </button>
     </form>
@@ -68,8 +69,8 @@ export default function Users() {
   return (
     <section>
       <div className="mb-4">
-        <h1 className="text-xl font-semibold">Users</h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <h1 className="page-title">Users</h1>
+        <p className="mt-1 text-sm text-stone-500">
           Every email has exactly one account and one role. Employees register themselves; technician and admin accounts are
           seeded by the help desk.
         </p>
@@ -95,27 +96,35 @@ export default function Users() {
       </div>
 
       <ErrorBox error={users.error || error} onRetry={users.error ? users.reload : undefined} />
-      {message && <p className="mb-3 rounded-md bg-emerald-50 p-3 text-sm text-emerald-700">{message}</p>}
+      {message && <p className="mb-3 rounded-md border border-brand-200 bg-brand-50 px-3 py-2.5 text-sm text-brand-800">{message}</p>}
       {users.loading && !users.data && <Loading />}
       {users.data && users.data.length === 0 && <Empty>No users match.</Empty>}
 
       {users.data && users.data.length > 0 && (
-        <ul className="divide-y divide-slate-200 overflow-hidden rounded-lg border border-slate-200 bg-white">
+        <ul className="divide-y divide-stone-200 overflow-hidden card">
           {users.data.map((u) => (
-            <li key={u.id} className={`px-4 py-3 ${u.active ? '' : 'bg-slate-50'}`}>
+            <li key={u.id} className={`px-4 py-3 ${u.active ? '' : 'bg-stone-50'}`}>
               <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                <span
+                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold ${
+                    u.active ? ROLE_COLORS[u.role].avatar : 'bg-stone-200 text-stone-500'
+                  }`}
+                  aria-hidden="true"
+                >
+                  {u.name.trim().charAt(0).toUpperCase()}
+                </span>
                 <div className="min-w-0 flex-1">
-                  <p className={`font-medium ${u.active ? '' : 'text-slate-400 line-through'}`}>{u.name}</p>
-                  <p className="truncate text-xs text-slate-500">
+                  <p className={`font-medium ${u.active ? '' : 'text-stone-400 line-through'}`}>{u.name}</p>
+                  <p className="truncate text-xs text-stone-500">
                     {u.email} · since {formatDate(u.created_at)}
                   </p>
                 </div>
-                <span className="text-xs font-medium text-slate-600">{ROLE_LABELS[u.role]}</span>
+                <span className={`rounded-md px-1.5 py-0.5 text-xs font-medium ring-1 ring-inset ${ROLE_COLORS[u.role].chip}`}>{ROLE_LABELS[u.role]}</span>
                 {!u.active && <span className="text-xs text-red-600">Disabled</span>}
                 <div className="flex gap-1">
                   <button
                     onClick={() => setResetId(resetId === u.id ? null : u.id)}
-                    className="rounded-md px-2 py-1 text-sm text-slate-600 hover:bg-slate-100"
+                    className="rounded-md px-2 py-1 text-sm font-medium text-stone-600 transition-colors hover:bg-stone-100 hover:text-stone-900"
                   >
                     Reset password
                   </button>

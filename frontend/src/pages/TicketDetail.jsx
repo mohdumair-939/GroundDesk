@@ -13,7 +13,8 @@ import {
 } from '../api'
 import { useAuth } from '../auth'
 import AssignmentPanel from '../components/AssignmentPanel'
-import { PriorityBadge, StatusBadge } from '../components/Badges'
+import { CategoryTag, PriorityBadge, StatusBadge } from '../components/Badges'
+import { STATUS_COLORS } from '../colors'
 import FeedbackPanel from '../components/FeedbackPanel'
 import { ErrorBox, Loading } from '../components/States'
 import SuggestionCard, { SuggestionPending } from '../components/SuggestionCard'
@@ -93,20 +94,20 @@ export default function TicketDetail() {
 
   return (
     <section className="space-y-5">
-      <Link to={isAdmin ? '/tickets' : '/'} className="text-sm text-slate-500 hover:text-slate-800">
+      <Link to={isAdmin ? '/tickets' : '/'} className="inline-flex items-center gap-1 text-sm text-stone-500 transition-colors hover:text-stone-900">
         ← Back
       </Link>
 
-      <div className="rounded-lg border border-slate-200 bg-white p-5">
-        <div className="flex flex-wrap items-center gap-2 text-sm text-slate-500">
-          <span className="font-mono">{ticket.ticket_code}</span>
+      <div className={`card border-t-4 p-6 ${STATUS_COLORS[ticket.status].edge.replace('border-l-', 'border-t-')}`}>
+        <div className="flex flex-wrap items-center gap-2 text-sm text-stone-500">
+          <span className="font-mono text-xs text-stone-500">{ticket.ticket_code}</span>
           <StatusBadge status={ticket.status} />
           <PriorityBadge priority={ticket.priority} />
-          <span>{ticket.category}</span>
+          <CategoryTag category={ticket.category} />
         </div>
-        <h1 className="mt-2 break-words text-xl font-semibold">{ticket.title}</h1>
-        <p className="mt-3 whitespace-pre-wrap break-words text-sm text-slate-700">{ticket.description}</p>
-        <p className="mt-4 text-xs text-slate-500">
+        <h1 className="page-title mt-3 break-words">{ticket.title}</h1>
+        <p className="mt-3 whitespace-pre-wrap break-words text-sm text-stone-700">{ticket.description}</p>
+        <p className="mt-4 text-xs text-stone-500">
           Raised by {ticket.user_name} ({ticket.user_email}) · {formatDate(ticket.created_at)}
         </p>
       </div>
@@ -129,12 +130,12 @@ export default function TicketDetail() {
             />
           )}
           {ticket.suggestion.feedback_resolved !== null && (
-            <p className="mt-4 border-t border-slate-100 pt-3 text-sm text-slate-600">
+            <p className="mt-4 border-t border-stone-200 pt-3 text-sm text-stone-600">
               {ticket.suggestion.feedback_resolved
                 ? '✓ The employee confirmed this suggestion fixed the issue.'
                 : 'The employee reported this did not fix the issue, so the ticket was escalated.'}
               {ticket.suggestion.feedback_comment && (
-                <span className="block italic text-slate-500">“{ticket.suggestion.feedback_comment}”</span>
+                <span className="block italic text-stone-500">“{ticket.suggestion.feedback_comment}”</span>
               )}
             </p>
           )}
@@ -152,8 +153,8 @@ export default function TicketDetail() {
 
       {ticket.assignment && <AssignmentPanel assignment={ticket.assignment} />}
 
-      <div className="rounded-lg border border-slate-200 bg-white p-5">
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">Status timeline</h2>
+      <div className="card p-5">
+        <h2 className="mb-4 text-sm font-semibold text-stone-900">Activity</h2>
         <Timeline history={ticket.history} />
         <NoteForm busy={busy} onSubmit={(note) => run(() => addNote(id, note))} />
       </div>

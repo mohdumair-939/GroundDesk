@@ -13,10 +13,10 @@ export default function PasswordInput({ label, value, onChange, autoComplete = '
 
   return (
     <div>
-      <label htmlFor={inputId} className="text-sm font-medium text-slate-700">
+      <label htmlFor={inputId} className="text-sm font-medium text-stone-700">
         {label}
       </label>
-      <div className="relative mt-1">
+      <div className="relative mt-1.5">
         <input
           id={inputId}
           type={visible ? 'text' : 'password'}
@@ -25,7 +25,7 @@ export default function PasswordInput({ label, value, onChange, autoComplete = '
           autoComplete={autoComplete}
           autoCapitalize="none"
           spellCheck={false}
-          className="block w-full rounded-md border border-slate-300 bg-white py-2 pl-3 pr-11 text-sm"
+          className="field block w-full py-2 pl-3 pr-11 text-sm"
           {...rest}
         />
         <button
@@ -35,14 +35,14 @@ export default function PasswordInput({ label, value, onChange, autoComplete = '
           aria-pressed={visible}
           aria-controls={inputId}
           title={visible ? 'Hide password' : 'Show password'}
-          className="absolute inset-y-0 right-0 flex w-10 items-center justify-center rounded-r-md text-slate-500 hover:text-slate-800 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-slate-900"
+          className="absolute inset-y-0 right-0 flex w-10 items-center justify-center rounded-r-md text-stone-400 transition-colors hover:text-stone-700 focus-visible:outline-offset-[-2px]"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="h-5 w-5" aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" d={visible ? EYE_OFF : EYE} />
           </svg>
         </button>
       </div>
-      {hint && <span className="mt-1 block text-xs text-slate-400">{hint}</span>}
+      {hint && <span className="mt-1 block text-xs text-stone-400">{hint}</span>}
     </div>
   )
 }
