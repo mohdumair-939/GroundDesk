@@ -3,6 +3,10 @@
 Safe to run repeatedly (matches on name / email). Demo accounts get DEMO_PASSWORD only when
 they are first created; existing passwords are never overwritten.
 
+Technician records left over from before staff moved to STAFF_DOMAIN (same handle, another
+domain, no usable login) are retired on every run: their tickets move to the person's
+STAFF_DOMAIN record and they are deactivated, so routing never picks them again.
+
 Run from backend/:  python -m app.seed
                     python -m app.seed --reset-demo-passwords   (set every seeded account's
                                                                  password to DEMO_PASSWORD)
@@ -15,7 +19,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.models import STAFF_DOMAIN, Department, Role, Technician, User
+from app.models import STAFF_DOMAIN, Assignment, Department, Role, Technician, Ticket, TicketStatusHistory, User
+from app.ticket_service import OPEN_STATUSES
 from app.security import hash_password
 
 DEPARTMENTS = {
@@ -67,8 +72,41 @@ def _ensure_user(db: Session, name: str, email: str, role: Role, technician_id: 
     return True
 
 
+def retire_legacy_technicians(db: Session, tech: Technician, handle: str) -> int:
+    """Move everything from older records of this technician (same handle, another email
+    domain) to `tech`, and deactivate them. Returns the number of records retired."""
+    legacy = db.scalars(
+        select(Technician).where(
+            Technician.email.ilike(f"{handle}@%"),
+            Technician.id != tech.id,
+            Technician.active.is_(True),
+        )
+    ).all()
+    for old in legacy:
+        for assignment in db.scalars(
+            select(Assignment).where(Assignment.technician_id == old.id)
+        ).all():
+            ticket = db.get(Ticket, assignment.ticket_id)
+            assignment.technician_id = tech.id
+            if ticket is not None and ticket.status in OPEN_STATUSES:
+                db.add(
+                    TicketStatusHistory(
+                        ticket_id=ticket.id,
+                        old_status=ticket.status,
+                        new_status=ticket.status,
+                        note=f"Moved from a retired duplicate record ({old.email}) to {tech.name} ({tech.email})",
+                    )
+                )
+        # A login linked to the old record could never sign in (wrong domain); unlink it.
+        for user in db.scalars(select(User).where(User.technician_id == old.id)).all():
+            user.technician_id = None
+            user.active = False
+        old.active = False
+    return len(legacy)
+
+
 def seed(db: Session) -> dict:
-    created = {"departments": 0, "technicians": 0, "users": 0}
+    created = {"departments": 0, "technicians": 0, "users": 0, "legacy_technicians_retired": 0}
     for name, (description, techs) in DEPARTMENTS.items():
         dept = db.scalars(select(Department).where(Department.name == name)).first()
         if dept is None:
@@ -85,6 +123,7 @@ def seed(db: Session) -> dict:
                 db.flush()
                 created["technicians"] += 1
             created["users"] += _ensure_user(db, tech_name, email, Role.TECHNICIAN, tech.id)
+            created["legacy_technicians_retired"] += retire_legacy_technicians(db, tech, handle)
     for name, email in ADMINS:
         created["users"] += _ensure_user(db, name, email, Role.ADMIN)
     for name, email in EMPLOYEES:

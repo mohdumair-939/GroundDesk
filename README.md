@@ -85,7 +85,7 @@ flowchart LR
 | Database | PostgreSQL + pgvector (Neon free tier) |
 | AI | Gemini `gemini-embedding-001` (768-d) and `gemini-3.8-flash`; Groq `openai/gpt-oss-120b` fallback |
 | Auth | scrypt password hashes (stdlib), role-bound JWT bearer tokens (PyJWT) |
-| Tests | pytest + FastAPI TestClient (73 tests), Vitest (10 tests) |
+| Tests | pytest + FastAPI TestClient (74 tests), Vitest (10 tests) |
 | Hosting | Render (API, free), Vercel (frontend, free) |
 
 ## Repository structure

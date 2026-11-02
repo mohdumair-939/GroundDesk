@@ -173,3 +173,10 @@ Not in the master plan; the owner asked for it. A technician's fix for an escala
 - **Ingest:** `python -m app.ingest` now only adds/removes file docs, so learned articles survive restarts; it re-embeds learned articles when the embedding model changes (or with `--force`).
 - Migration `b7d41e2a9c10` (adds `kb_documents.origin`, `kb_articles`). Upgrade → downgrade → upgrade checked on a temporary database. **Deployed 2026-11-02** (commit `dbe287d`): Render ran the migration on start; live `/health` shows the commit, `/kb/summary` returns 21 file docs and 0 learned, and Vercel serves the new build.
 - Verified: **73 backend tests pass** (new `tests/test_kb_learning.py`: full loop, a fix the employee rejects, force-close, edit/unpublish/reject, validation and access, embedding failure, ingest keeps learned articles); frontend lint clean, build OK, 10 Vitest tests pass. Not yet checked in a real browser.
+
+## Duplicate technician records fixed (2026-11-02)
+
+- **Found during the live walkthrough:** production had 9 active technician records (#10–18) with the old `@helpdesk.local` emails and no login accounts, left over from before staff moved to `@grounddesk.com` (the seed matches technicians by email, so it created new records beside them). Routing could assign tickets to them, and nobody could then work those tickets; HD-0040 went to #14.
+- **Fix:** `python -m app.seed` (run on every Render start) now retires them: assignments move to the person's `@grounddesk.com` record (open tickets get a timeline note), linked logins are unlinked and disabled, and the old record is deactivated, so routing and the admin lists skip it. Idempotent. Test: `tests/test_seed.py`.
+- Verified: the new test, `test_assignment.py` and `test_auth.py` pass (34 tests). The full suite was not re-run for this change.
+- **Walkthrough data on production:** HD-0040 (closed) and HD-0041 (suggestion provided), plus one rejected test article in the KB review history. Clear them with the other demo tickets before the review.
