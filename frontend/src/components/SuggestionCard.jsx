@@ -57,6 +57,11 @@ function Sources({ sources, heading }) {
           <li key={s.chunk_id} className="flex flex-wrap items-baseline gap-x-2 text-sm">
             <span className="font-mono text-xs font-medium text-violet-600">[{s.n}]</span>
             <span className="text-stone-800">{s.title}</span>
+            {s.origin === 'ticket' && (
+              <span className="rounded bg-violet-50 px-1 py-px text-[11px] font-medium text-violet-700 ring-1 ring-inset ring-violet-200">
+                Learned from a resolved ticket
+              </span>
+            )}
             <span className="text-xs text-stone-500">
               {s.category} · match {pct(s.score)}
             </span>
@@ -115,14 +120,11 @@ export default function SuggestionCard({ suggestion, children }) {
   if (!suggestion.answered) {
     return (
       <div className="rounded-lg border border-amber-200 border-t-4 border-t-amber-400 bg-amber-50 p-5">
-        <h2 className="text-sm font-semibold text-amber-900">No reliable solution found</h2>
-        <p className="mt-2 text-sm text-amber-900/90">{suggestion.suggestion_text}</p>
-        {suggestion.top_score !== null && (
-          <p className="mt-2 text-xs text-amber-800/80">
-            Closest knowledge base match was {pct(suggestion.top_score)}, below the confidence threshold, so no
-            answer was generated.
-          </p>
-        )}
+        <h2 className="text-sm font-semibold text-amber-900">We couldn't find a solution for this issue</h2>
+        <p className="mt-2 text-sm text-amber-900/90">
+          Our knowledge base doesn't have a reliable fix for this problem yet, so we'd rather not guess. A technician
+          will look into it for you — escalate the ticket below and it will be assigned to the right team.
+        </p>
         <Sources sources={suggestion.sources} heading="Articles checked" />
         {children}
       </div>

@@ -4,6 +4,7 @@ import Logo from './components/Logo'
 import { ROLE_COLORS } from './colors'
 import { ROLE_LABELS } from './constants'
 import Dashboard from './pages/Dashboard'
+import KnowledgeBase from './pages/KnowledgeBase'
 import Login from './pages/Login'
 import NewTicket from './pages/NewTicket'
 import Register from './pages/Register'
@@ -26,6 +27,7 @@ const NAV = {
   admin: [
     ['/', 'Dashboard'],
     ['/tickets', 'All tickets'],
+    ['/knowledge', 'Knowledge base'],
     ['/users', 'Users'],
   ],
 }
@@ -43,6 +45,7 @@ function RoleRoutes({ role }) {
       <Route path="/tickets/:id" element={<TicketDetail />} />
       {role === 'employee' && <Route path="/new" element={<NewTicket />} />}
       {role === 'admin' && <Route path="/users" element={<Users />} />}
+      {role === 'admin' && <Route path="/knowledge" element={<KnowledgeBase />} />}
       <Route path="/login" element={<Navigate to="/" replace />} />
       <Route path="/register" element={<Navigate to="/" replace />} />
       <Route path="*" element={<p className="card p-8 text-center text-stone-500">Page not found.</p>} />

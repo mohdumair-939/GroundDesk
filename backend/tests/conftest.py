@@ -76,6 +76,8 @@ def clean_tables():
     tables = ", ".join(t.name for t in Base.metadata.sorted_tables if t.name not in KEEP_TABLES)
     with engine.begin() as conn:
         conn.execute(text(f"TRUNCATE {tables} RESTART IDENTITY CASCADE"))
+        # The /kb docs are kept, but articles learned from tickets belong to a single test.
+        conn.execute(text("DELETE FROM kb_documents WHERE origin = 'ticket'"))
         conn.execute(text("DELETE FROM users WHERE email NOT LIKE '%@grounddesk.com' AND email NOT LIKE '%@helpdesk.local'"))
         conn.execute(text("UPDATE users SET active = true"))
     yield

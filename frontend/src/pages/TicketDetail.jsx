@@ -16,6 +16,7 @@ import AssignmentPanel from '../components/AssignmentPanel'
 import { CategoryTag, PriorityBadge, StatusBadge } from '../components/Badges'
 import { STATUS_COLORS } from '../colors'
 import FeedbackPanel from '../components/FeedbackPanel'
+import KbArticleStatus from '../components/KbArticleStatus'
 import { ErrorBox, Loading } from '../components/States'
 import SuggestionCard, { SuggestionPending } from '../components/SuggestionCard'
 import { AdminPanel, ClosurePanel, NoteForm, TechnicianPanel } from '../components/TicketActions'
@@ -117,7 +118,7 @@ export default function TicketDetail() {
       {isOwner && ticket.status === 'PENDING_APPROVAL' && (
         <ClosurePanel ticket={ticket} busy={busy} onSubmit={(approved, comment) => run(() => sendClosure(id, approved, comment))} />
       )}
-      {(isTech || isAdmin) && <TechnicianPanel ticket={ticket} busy={busy} onMove={(status, note) => run(() => updateStatus(id, status, note))} />}
+      {(isTech || isAdmin) && <TechnicianPanel ticket={ticket} busy={busy} onMove={(status, note, kbArticle) => run(() => updateStatus(id, status, note, kbArticle))} />}
       {isAdmin && <AdminPanel key={`${ticket.priority}-${ticket.category}-${ticket.status}`} ticket={ticket} act={adminAct} busy={busy} />}
 
       {ticket.suggestion ? (
@@ -152,6 +153,7 @@ export default function TicketDetail() {
       )}
 
       {ticket.assignment && <AssignmentPanel assignment={ticket.assignment} />}
+      {(isTech || isAdmin) && ticket.kb_article && <KbArticleStatus article={ticket.kb_article} isAdmin={isAdmin} />}
 
       <div className="card p-5">
         <h2 className="mb-4 text-sm font-semibold text-stone-900">Activity</h2>

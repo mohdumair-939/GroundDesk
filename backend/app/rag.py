@@ -90,6 +90,7 @@ def _source(n: int, hit: Hit) -> dict:
         "title": hit.document.title,
         "category": hit.document.category.value,
         "source": hit.document.source,
+        "origin": hit.document.origin.value,  # "ticket" = learned from a resolved ticket
         "chunk_id": hit.chunk.id,
         "score": hit.score,
     }
@@ -122,7 +123,7 @@ def suggest_for_ticket(db: Session, ticket: Ticket) -> AISuggestion:
             top_score=best,
             provider="guard",
         )
-        note = f"No reliable KB match (best score {best:.2f} < {threshold:.2f})"
+        note = "No reliable KB match found; the ticket needs a technician"
     else:
         context_hits = [h for h in hits if h.score >= threshold - CONTEXT_MARGIN]
         answer, provider = generate(SYSTEM_PROMPT, build_prompt(ticket, context_hits))

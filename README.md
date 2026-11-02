@@ -18,7 +18,8 @@ A college mini-project: an IT help desk where employees raise tickets, an AI sug
 | **Insufficient-context guard** | If the best match scores below **0.70**, the LLM is never called: the ticket shows "No reliable solution found" and the articles that were checked. |
 | **Feedback and routing** | "Yes, it is fixed" → Resolved. "No" → escalated and routed by **category rule → keyword fallback → General IT**, to the **least-loaded** technician. The matched rule is shown. |
 | **Technician workflow** | Queue grouped by stage: Start work → **Mark solved** (resolution note required) → the employee **approves or rejects** the closure. Technicians cannot close tickets themselves. |
-| **Admin** | Dashboard (status, AI outcome, per department, per category, average time to close); all tickets; change priority/category; reassign; force-close and reopen (reason required); notes; user management. |
+| **Learning from resolved tickets** | When marking an escalated ticket solved, the technician can write the fix up as a KB article (problem, cause, numbered steps). It goes to admin review **only after the employee confirms the fix worked**; a rejected fix is discarded. Once an admin edits and **publishes** it, it is embedded like the `/kb` guides, so the next similar ticket is answered by the AI and cites it as "Learned from a resolved ticket". Admins can unpublish an article at any time. |
+| **Admin** | Dashboard (status, AI outcome, per department, per category, average time to close); all tickets; change priority/category; reassign; force-close and reopen (reason required); notes; user management; knowledge-base review (edit, publish, reject, unpublish). |
 
 **Ticket lifecycle**
 
@@ -27,6 +28,15 @@ OPEN → SUGGESTION_PROVIDED → RESOLVED                        (employee: "Yes
                            → ESCALATED → ASSIGNED             (employee: "No", then automatic routing)
 ASSIGNED → IN_PROGRESS → PENDING_APPROVAL → CLOSED             (technician; employee approves)
 PENDING_APPROVAL → IN_PROGRESS                                 (employee rejects, with a reason)
+```
+
+**Knowledge-base article lifecycle** (proposed with "Mark solved")
+
+```
+AWAITING_CLOSURE → PENDING_REVIEW → PUBLISHED     (employee approves the closure; admin publishes)
+AWAITING_CLOSURE → REJECTED                        (employee says the fix did not work)
+PENDING_REVIEW   → REJECTED                        (admin)
+PUBLISHED        → PENDING_REVIEW                  (admin unpublishes; removed from the AI's search)
 ```
 
 Out of scope by design (per the project brief): chatbots, agents, email integration, ML-based routing.
@@ -44,7 +54,7 @@ flowchart LR
         ASG["assignment.py<br/>rule-based routing"]
         POOL["AI worker threads"]
     end
-    DB[("Neon PostgreSQL + pgvector<br/>tickets · history · users · staff<br/>kb_documents · kb_chunks (768-d)")]
+    DB[("Neon PostgreSQL + pgvector<br/>tickets · history · users · staff<br/>kb_documents · kb_chunks (768-d) · kb_articles")]
     GEM["Google Gemini<br/>embeddings + LLM"]
     GROQ["Groq LLM<br/>(fallback)"]
     KB[/"/kb — 21 markdown articles"/]
@@ -58,6 +68,7 @@ flowchart LR
     RAG -. "if Gemini fails" .-> GROQ
     API --> DB
     KB -- "python -m app.ingest<br/>(chunk ~500 tokens, embed)" --> DB
+    API -- "admin publishes a technician's fix<br/>(kb_learning.py: chunk, embed)" --> DB
 ```
 
 - **One backend service** handles tickets, RAG and routing; there are no agents or orchestration frameworks.
@@ -74,7 +85,7 @@ flowchart LR
 | Database | PostgreSQL + pgvector (Neon free tier) |
 | AI | Gemini `gemini-embedding-001` (768-d) and `gemini-3.8-flash`; Groq `openai/gpt-oss-120b` fallback |
 | Auth | scrypt password hashes (stdlib), role-bound JWT bearer tokens (PyJWT) |
-| Tests | pytest + FastAPI TestClient (62 tests), Vitest (10 tests) |
+| Tests | pytest + FastAPI TestClient (73 tests), Vitest (10 tests) |
 | Hosting | Render (API, free), Vercel (frontend, free) |
 
 ## Repository structure
@@ -84,18 +95,19 @@ backend/
   app/
     main.py            FastAPI app, CORS, JSON 500s, /health (reports deployed commit)
     models.py          SQLAlchemy models (tickets, history, AI suggestions, KB, staff, users)
-    routers/           auth, tickets, stats, staff, users
+    routers/           auth, tickets, stats, staff, users, kb (article review)
     rag.py             retrieval, insufficient-context guard, grounded prompt
     llm_client.py      embeddings + generation, provider fallback, mock mode
     assignment.py      category/keyword/default routing, least-loaded technician
     ticket_service.py  allowed status transitions, timeline entries
     security.py        password hashing, JWT, role checks
-    ingest.py          /kb → chunks → embeddings → pgvector
+    ingest.py          /kb → chunks → embeddings → pgvector (file docs only; leaves learned articles)
+    kb_learning.py     technician fixes → reviewed KB articles → embeddings
     seed.py            departments, technicians, demo accounts (+ --reset-demo-passwords)
   alembic/             database migrations
   tests/               pytest suite
 frontend/
-  src/pages/           Login, Register, TicketList, NewTicket, TicketDetail, TechnicianView, Dashboard, Users
+  src/pages/           Login, Register, TicketList, NewTicket, TicketDetail, TechnicianView, Dashboard, Users, KnowledgeBase
   src/components/      suggestion card, timeline, panels, password field, server status …
   src/api.js           API client (errors, retries, route fallback) + api.test.js
   vercel.json          SPA routing and the /api → Render forward
@@ -170,4 +182,4 @@ The backend tests use mock embeddings and a mocked LLM, so they make no AI API c
 - No email notifications, attachments, SLAs, or password reset by email (the admin resets passwords).
 - Technicians have no individual skills; routing uses departments and current load.
 - No ticket deletion in the app; no admin UI to create staff accounts or departments (they come from `app/seed.py`).
-- The knowledge base is 21 hand-written articles. Issues outside it (e.g. hardware noise, physical damage) are intentionally escalated rather than answered.
+- The knowledge base starts with 21 hand-written articles. Issues outside it (e.g. hardware noise, physical damage) are escalated rather than answered, until a technician's fix for one is confirmed and published.

@@ -161,3 +161,15 @@ Not in the master plan; the owner asked for it before Sprint 4.
 ## Next approved task
 
 Sprints 1–3 are built and tested locally (2026-10-17). Nothing after the Sprint 0 commit has been committed yet. Sprint 0–3 are deployed. Next: Sprint 4 (dashboard, polish, docs, demo prep).
+
+## Learning from resolved tickets (2026-11-02, owner request)
+
+Not in the master plan; the owner asked for it. A technician's fix for an escalated ticket can become a knowledge-base article, so the AI can answer similar tickets later.
+
+- **Capture:** "Mark solved" (queue and ticket page) has an "Add this fix to the knowledge base" option, ticked by default: title, problem/symptoms (prefilled from the ticket), optional cause, numbered steps. Stored in the new `kb_articles` table as `AWAITING_CLOSURE`.
+- **Verified fixes only:** the employee approving the closure → `PENDING_REVIEW`; rejecting it → `REJECTED` (the fix did not work). An admin force-close also sends it to review, flagged "not confirmed by the employee".
+- **Admin review:** new "Knowledge base" page (`/knowledge`): edit, publish, reject (reason), unpublish (reason → back to review). Endpoints under `/kb` (admin only).
+- **Publishing:** `kb_learning.py` chunks and embeds the article exactly like a `/kb` file, as a `kb_documents` row with `origin = "ticket"` (source `ticket-hd-0042-<id>`). If embedding fails → 503, nothing changes. Suggestions label these sources "Learned from a resolved ticket".
+- **Ingest:** `python -m app.ingest` now only adds/removes file docs, so learned articles survive restarts; it re-embeds learned articles when the embedding model changes (or with `--force`).
+- Migration `b7d41e2a9c10` (adds `kb_documents.origin`, `kb_articles`). Upgrade → downgrade → upgrade checked on a temporary database. **Not yet applied to production**: Render applies it on the next deploy (`alembic upgrade head`).
+- Verified: **73 backend tests pass** (new `tests/test_kb_learning.py`: full loop, a fix the employee rejects, force-close, edit/unpublish/reject, validation and access, embedding failure, ingest keeps learned articles); frontend lint clean, build OK, 10 Vitest tests pass. Not yet checked in a real browser.

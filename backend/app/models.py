@@ -106,11 +106,19 @@ class Ticket(Base):
     assignment: Mapped["Assignment | None"] = relationship(
         back_populates="ticket", cascade="all, delete-orphan", uselist=False
     )
+    kb_articles: Mapped[list["KBArticle"]] = relationship(
+        back_populates="ticket", order_by="KBArticle.id", cascade="all, delete-orphan"
+    )
 
     @property
     def suggestion(self) -> "AISuggestion | None":
         """The latest AI suggestion (a ticket normally has at most one)."""
         return self.suggestions[-1] if self.suggestions else None
+
+    @property
+    def kb_article(self) -> "KBArticle | None":
+        """The latest knowledge-base submission for this ticket, if any."""
+        return self.kb_articles[-1] if self.kb_articles else None
 
 
 class TicketStatusHistory(Base):
@@ -151,11 +159,27 @@ class AISuggestion(Base):
     ticket: Mapped[Ticket] = relationship(back_populates="suggestions")
 
 
+class KBOrigin(str, enum.Enum):
+    FILE = "file"  # a markdown file in /kb, managed by `python -m app.ingest`
+    TICKET = "ticket"  # a technician's fix from a closed ticket, approved by an admin
+
+
+class KBArticleStatus(str, enum.Enum):
+    AWAITING_CLOSURE = "AWAITING_CLOSURE"  # submitted with "mark solved"; employee has not confirmed yet
+    PENDING_REVIEW = "PENDING_REVIEW"  # ticket closed; waiting for an admin to review
+    PUBLISHED = "PUBLISHED"  # embedded into the KB and used by the AI
+    REJECTED = "REJECTED"  # rejected by an admin, or the employee said the fix did not work
+
+
 class KBDocument(Base):
     __tablename__ = "kb_documents"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    source: Mapped[str] = mapped_column(String(255), unique=True)  # file name inside /kb
+    # File name inside /kb, or "ticket-hd-0042-<article id>" for a published ticket article.
+    source: Mapped[str] = mapped_column(String(255), unique=True)
+    origin: Mapped[KBOrigin] = mapped_column(
+        _str_enum(KBOrigin, "kb_origin"), default=KBOrigin.FILE, server_default=KBOrigin.FILE.value
+    )
     title: Mapped[str] = mapped_column(String(255))
     category: Mapped[Category] = mapped_column(_str_enum(Category, "category"))
     content_hash: Mapped[str] = mapped_column(String(64))
@@ -177,6 +201,40 @@ class KBChunk(Base):
     embedding: Mapped[list[float]] = mapped_column(Vector(EMBEDDING_DIM))
 
     document: Mapped[KBDocument] = relationship(back_populates="chunks")
+
+
+class KBArticle(Base):
+    """A technician's fix for an escalated ticket, proposed for the knowledge base.
+
+    It only reaches the AI after the employee confirmed the fix (ticket CLOSED) and an admin
+    reviewed and published it; publishing creates a KBDocument with origin "ticket".
+    """
+
+    __tablename__ = "kb_articles"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    ticket_id: Mapped[int] = mapped_column(ForeignKey("tickets.id", ondelete="CASCADE"), index=True)
+    status: Mapped[KBArticleStatus] = mapped_column(
+        _str_enum(KBArticleStatus, "kb_article_status"), default=KBArticleStatus.AWAITING_CLOSURE, index=True
+    )
+    title: Mapped[str] = mapped_column(String(120))
+    category: Mapped[Category] = mapped_column(_str_enum(Category, "category"))
+    problem: Mapped[str] = mapped_column(Text)  # symptoms, as a user would describe them
+    cause: Mapped[str | None] = mapped_column(Text)
+    steps: Mapped[str] = mapped_column(Text)  # numbered steps, one per line
+    # True when the employee approved the closure; False when an admin force-closed the ticket.
+    confirmed_by_employee: Mapped[bool] = mapped_column(Boolean, default=False)
+    submitted_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    submitted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    reviewed_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    review_note: Mapped[str | None] = mapped_column(String(500))
+    document_id: Mapped[int | None] = mapped_column(ForeignKey("kb_documents.id", ondelete="SET NULL"))
+
+    ticket: Mapped["Ticket"] = relationship(back_populates="kb_articles")
+    submitted_by: Mapped["User | None"] = relationship(foreign_keys=[submitted_by_id])
+    reviewed_by: Mapped["User | None"] = relationship(foreign_keys=[reviewed_by_id])
+    document: Mapped[KBDocument | None] = relationship()
 
 
 class Department(Base):

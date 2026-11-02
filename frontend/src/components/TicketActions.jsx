@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { CATEGORIES, PRIORITIES } from '../constants'
 import { listTechnicians } from '../api'
 import { useAsync } from '../useAsync'
+import SolveForm from './SolveForm'
 
 const textarea = 'mt-1 block w-full field px-3 py-2 text-sm'
 const select = 'field px-2 py-1.5 text-sm'
@@ -71,9 +72,8 @@ export function ClosurePanel({ ticket, onSubmit, busy }) {
   )
 }
 
-// Technician (and admin): start work / mark solved with a resolution note.
+// Technician (and admin): start work / mark solved with a resolution note and a KB article.
 export function TechnicianPanel({ ticket, onMove, busy }) {
-  const [note, setNote] = useState('')
   if (ticket.status === 'ASSIGNED') {
     return (
       <Card title="Technician actions">
@@ -86,17 +86,7 @@ export function TechnicianPanel({ ticket, onMove, busy }) {
   if (ticket.status === 'IN_PROGRESS') {
     return (
       <Card title="Technician actions">
-        <label className="block text-sm text-stone-700" htmlFor="resolution">
-          Resolution note (shown to the employee, who approves the closure)
-        </label>
-        <textarea id="resolution" rows={2} maxLength={400} value={note} onChange={(e) => setNote(e.target.value)} className={textarea} />
-        <button
-          onClick={() => onMove('PENDING_APPROVAL', note.trim())}
-          disabled={busy || note.trim().length < 3}
-          className={`${btn} mt-3 btn-solid bg-teal-600 hover:bg-teal-700`}
-        >
-          {busy ? 'Saving…' : 'Mark solved'}
-        </button>
+        <SolveForm ticket={ticket} busy={busy} onSubmit={(note, kbArticle) => onMove('PENDING_APPROVAL', note, kbArticle)} />
       </Card>
     )
   }

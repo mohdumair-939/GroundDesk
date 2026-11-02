@@ -5,7 +5,7 @@ from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, StringConstraints
 
-from app.models import Category, Confidence, Priority, Role, TicketStatus
+from app.models import Category, Confidence, KBArticleStatus, Priority, Role, TicketStatus
 
 Title = Annotated[str, StringConstraints(strip_whitespace=True, min_length=5, max_length=120)]
 Description = Annotated[str, StringConstraints(strip_whitespace=True, min_length=20, max_length=5000)]
@@ -13,6 +13,10 @@ Name = Annotated[str, StringConstraints(strip_whitespace=True, min_length=2, max
 Note = Annotated[str, StringConstraints(strip_whitespace=True, max_length=500)]
 RequiredNote = Annotated[str, StringConstraints(strip_whitespace=True, min_length=3, max_length=500)]
 Password = Annotated[str, StringConstraints(min_length=8, max_length=128)]
+ArticleTitle = Annotated[str, StringConstraints(strip_whitespace=True, min_length=5, max_length=120)]
+ArticleProblem = Annotated[str, StringConstraints(strip_whitespace=True, min_length=20, max_length=2000)]
+ArticleCause = Annotated[str, StringConstraints(strip_whitespace=True, max_length=1000)]
+ArticleSteps = Annotated[str, StringConstraints(strip_whitespace=True, min_length=20, max_length=4000)]
 LoginEmail = Annotated[str, StringConstraints(strip_whitespace=True, to_lower=True, min_length=3, max_length=254)]
 
 
@@ -77,11 +81,24 @@ class TicketCreate(BaseModel):
     # The requester's name and email come from the signed-in account.
 
 
+class KBSubmission(BaseModel):
+    """The technician's troubleshooting, proposed for the knowledge base when marking solved."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    title: ArticleTitle
+    problem: ArticleProblem
+    cause: ArticleCause | None = None
+    steps: ArticleSteps
+
+
 class StatusUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     status: TicketStatus
     note: Note | None = None
+    # Only with PENDING_APPROVAL ("mark solved"): propose this fix for the knowledge base.
+    kb_article: KBSubmission | None = None
 
 
 class ClosureIn(BaseModel):
@@ -192,6 +209,7 @@ class SourceOut(BaseModel):
     title: str
     category: str
     source: str
+    origin: str = "file"  # suggestions saved before learned articles existed have no origin
     chunk_id: int
     score: float
 
@@ -211,6 +229,67 @@ class SuggestionOut(BaseModel):
     feedback_comment: str | None
 
 
+class KBArticleBrief(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    status: KBArticleStatus
+    title: str
+    review_note: str | None
+
+
 class TicketDetail(TicketOut):
     history: list[StatusHistoryOut] = Field(default_factory=list)
     suggestion: SuggestionOut | None = None  # latest AI suggestion, if any
+    kb_article: KBArticleBrief | None = None  # latest knowledge-base submission, if any
+
+
+# ---------------------------------------------------------------- knowledge base learned from tickets
+
+
+class TicketRef(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    ticket_code: str
+    title: str
+    description: str
+    status: TicketStatus
+
+
+class KBArticleOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    status: KBArticleStatus
+    title: str
+    category: Category
+    problem: str
+    cause: str | None
+    steps: str
+    confirmed_by_employee: bool
+    ticket: TicketRef
+    submitted_by: UserRef | None
+    submitted_at: datetime
+    reviewed_by: UserRef | None
+    reviewed_at: datetime | None
+    review_note: str | None
+    document_id: int | None
+
+
+class KBArticleUpdate(BaseModel):
+    """Admin edits before publishing."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    title: ArticleTitle | None = None
+    category: Category | None = None
+    problem: ArticleProblem | None = None
+    cause: ArticleCause | None = None
+    steps: ArticleSteps | None = None
+
+
+class KBReviewIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    note: Note | None = None

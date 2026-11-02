@@ -15,8 +15,20 @@ from sqlalchemy.orm import Session, selectinload
 from app import database
 from app.assignment import assign_ticket, reassign_ticket
 from app.database import get_db
+from app.kb_learning import on_closure_rejected, on_ticket_closed, submit_article
 from app.llm_client import LLMError
-from app.models import Assignment, Category, Priority, Role, Technician, Ticket, TicketStatus, TicketStatusHistory, User
+from app.models import (
+    Assignment,
+    Category,
+    KBArticle,
+    Priority,
+    Role,
+    Technician,
+    Ticket,
+    TicketStatus,
+    TicketStatusHistory,
+    User,
+)
 from app.rag import suggest_for_ticket
 from app.schemas import (
     ClosureIn,
@@ -42,6 +54,7 @@ ASSIGNMENT_LOAD = selectinload(Ticket.assignment).options(
     selectinload(Assignment.department), selectinload(Assignment.technician)
 )
 HISTORY_LOAD = selectinload(Ticket.history).selectinload(TicketStatusHistory.changed_by)
+KB_LOAD = selectinload(Ticket.kb_articles).selectinload(KBArticle.document)
 
 # Moves allowed through PATCH /status, per role: {target status: required current status(es)}.
 # Everything else is set by the suggestion, feedback, closure and admin endpoints.
@@ -75,7 +88,7 @@ def load_ticket(db: Session, ticket_id: int, user: User | None = None, lock: boo
     if lock:
         # Serialises concurrent actions on one ticket (e.g. auto-suggest vs. a manual retry).
         stmt = stmt.with_for_update(of=Ticket)
-    ticket = db.scalars(stmt.options(HISTORY_LOAD, selectinload(Ticket.suggestions), ASSIGNMENT_LOAD)).first()
+    ticket = db.scalars(stmt.options(HISTORY_LOAD, selectinload(Ticket.suggestions), ASSIGNMENT_LOAD, KB_LOAD)).first()
     if ticket is None or (user is not None and not can_view(user, ticket)):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Ticket not found")
     return ticket
@@ -262,8 +275,10 @@ def closure(ticket_id: int, payload: ClosureIn, db: Session = Depends(get_db), u
     comment = f" Comment: {payload.comment}" if payload.comment else ""
     if payload.approved:
         change_status(db, ticket, S.CLOSED, f"Employee approved the closure.{comment}", user)
+        on_ticket_closed(ticket, confirmed_by_employee=True)  # a proposed KB article goes to review
     else:
         change_status(db, ticket, S.IN_PROGRESS, f"Employee rejected the closure.{comment}", user)
+        on_closure_rejected(ticket)  # the fix did not work, so it must not reach the KB
     db.commit()
     return reload_ticket(db, ticket_id)
 
@@ -274,7 +289,10 @@ def closure(ticket_id: int, payload: ClosureIn, db: Session = Depends(get_db), u
 @router.patch("/{ticket_id}/status", response_model=TicketDetail)
 def update_status(ticket_id: int, payload: StatusUpdate, db: Session = Depends(get_db), user: User = Depends(current_user)):
     """Technician: ASSIGNED -> IN_PROGRESS -> PENDING_APPROVAL ("mark solved", note required).
-    Admin: the same, plus force-close any open ticket."""
+    Admin: the same, plus force-close any open ticket.
+
+    With "mark solved", kb_article proposes the troubleshooting for the knowledge base; it is
+    only reviewed after the employee confirms the fix (see kb_learning)."""
     ticket = load_ticket(db, ticket_id, user, lock=True)
     moves = STATUS_MOVES.get(user.role)
     if moves is None:
@@ -285,16 +303,25 @@ def update_status(ticket_id: int, payload: StatusUpdate, db: Session = Depends(g
         raise conflict(f"Cannot move ticket from {ticket.status.value} to {payload.status.value}")
     if payload.status in (S.PENDING_APPROVAL, S.CLOSED) and not payload.note:
         raise HTTPException(422, "Please add a note describing the resolution")
+    if payload.kb_article is not None and payload.status != S.PENDING_APPROVAL:
+        raise HTTPException(422, "A knowledge-base article can only be added when marking the ticket solved")
 
     note = payload.note
     if payload.status == S.PENDING_APPROVAL:
         note = f"Marked as solved, waiting for the employee to approve closure. Resolution: {payload.note}"
     elif payload.status == S.CLOSED:
         note = f"Closed by admin. {payload.note}"
+    if payload.kb_article is not None:
+        # Logged before the status change: the employee's closure panel shows the latest
+        # PENDING_APPROVAL entry as the resolution. Nothing is committed if the move fails.
+        submit_article(db, ticket, payload.kb_article.model_dump(), user)
+        add_note(db, ticket, "Troubleshooting proposed for the knowledge base (reviewed after closure)", user)
     try:
         change_status(db, ticket, payload.status, note, user)
     except InvalidTransition as exc:
         raise conflict(str(exc)) from exc
+    if payload.status == S.CLOSED:
+        on_ticket_closed(ticket, confirmed_by_employee=False)
     db.commit()
     return reload_ticket(db, ticket_id)
 

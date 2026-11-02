@@ -3,6 +3,10 @@
 Run from backend/:  python -m app.ingest            (only new or changed docs)
                     python -m app.ingest --force    (re-embed everything)
 
+Only file-based docs are added, updated or removed here. Articles learned from tickets
+(origin "ticket") live in the database; they are only re-embedded when the embedding model
+changes (or with --force), see kb_learning.refresh_published.
+
 Each doc starts with front matter:
     ---
     title: VPN will not connect
@@ -22,7 +26,7 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.llm_client import embed_documents, embedding_model_name
-from app.models import Category, KBChunk, KBDocument
+from app.models import Category, KBChunk, KBDocument, KBOrigin
 
 CHUNK_TOKENS = 500
 OVERLAP_TOKENS = 50
@@ -107,8 +111,8 @@ def ingest(db: Session, kb_dir: Path | None = None, force: bool = False, log=pri
     kb_dir = Path(kb_dir or settings.kb_dir)
     model = embedding_model_name()
     paths = sorted(kb_dir.glob("*.md"))
-    existing = {d.source: d for d in db.scalars(select(KBDocument))}
-    stats = {"added": 0, "updated": 0, "unchanged": 0, "removed": 0, "chunks": 0}
+    existing = {d.source: d for d in db.scalars(select(KBDocument).where(KBDocument.origin == KBOrigin.FILE))}
+    stats = {"added": 0, "updated": 0, "unchanged": 0, "removed": 0, "chunks": 0, "ticket_articles_reembedded": 0}
 
     for path in paths:
         doc = parse_doc(path)
@@ -125,6 +129,7 @@ def ingest(db: Session, kb_dir: Path | None = None, force: bool = False, log=pri
             db.flush()
         record = KBDocument(
             source=doc.source,
+            origin=KBOrigin.FILE,
             title=doc.title,
             category=doc.category,
             content_hash=doc.content_hash,
@@ -145,6 +150,10 @@ def ingest(db: Session, kb_dir: Path | None = None, force: bool = False, log=pri
         stats["removed"] += 1
         log(f" removed  {gone.source}")
     db.commit()
+
+    from app.kb_learning import refresh_published  # imported here: kb_learning imports this module
+
+    stats["ticket_articles_reembedded"] = refresh_published(db, force=force, log=log)
     return stats
 
 

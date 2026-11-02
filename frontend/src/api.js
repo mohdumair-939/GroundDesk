@@ -142,8 +142,11 @@ export const getHealth = () => request('/health', { retry: false })
 export const listTickets = (params) => request('/tickets', { params })
 export const getTicket = (id) => request(`/tickets/${id}`)
 export const createTicket = (body) => request('/tickets', { method: 'POST', body })
-export const updateStatus = (id, status, note) =>
-  request(`/tickets/${id}/status`, { method: 'PATCH', body: { status, note: note || null } })
+export const updateStatus = (id, status, note, kbArticle) =>
+  request(`/tickets/${id}/status`, {
+    method: 'PATCH',
+    body: { status, note: note || null, ...(kbArticle ? { kb_article: kbArticle } : {}) },
+  })
 export const requestSuggestion = (id) => request(`/tickets/${id}/suggest`, { method: 'POST' })
 export const sendFeedback = (id, resolved, comment) =>
   request(`/tickets/${id}/feedback`, { method: 'POST', body: { resolved, comment: comment || null } })
@@ -163,3 +166,10 @@ export const reopenTicket = (id, note) => request(`/tickets/${id}/reopen`, { met
 export const getStats = () => request('/stats')
 export const listUsers = (params) => request('/users', { params })
 export const updateUser = (id, changes) => request(`/users/${id}`, { method: 'PATCH', body: changes })
+export const getKbSummary = () => request('/kb/summary')
+export const listKbArticles = (status) => request('/kb/articles', { params: { status } })
+export const updateKbArticle = (id, changes) => request(`/kb/articles/${id}`, { method: 'PATCH', body: changes })
+export const publishKbArticle = (id, note) =>
+  request(`/kb/articles/${id}/publish`, { method: 'POST', body: { note: note || null } })
+export const rejectKbArticle = (id, note) => request(`/kb/articles/${id}/reject`, { method: 'POST', body: { note } })
+export const unpublishKbArticle = (id, note) => request(`/kb/articles/${id}/unpublish`, { method: 'POST', body: { note } })
