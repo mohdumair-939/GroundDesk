@@ -158,7 +158,11 @@ export default function TicketDetail() {
       <div className="card p-5">
         <h2 className="mb-4 text-sm font-semibold text-stone-900">Activity</h2>
         <Timeline history={ticket.history} />
-        <NoteForm busy={busy} onSubmit={(note) => run(() => addNote(id, note))} />
+        {/* While the employee owes an approval, their comment goes with the decision above,
+            so a plain note cannot be mistaken for closing the ticket. */}
+        {!(isOwner && ticket.status === 'PENDING_APPROVAL') && (
+          <NoteForm busy={busy} onSubmit={(note) => run(() => addNote(id, note))} />
+        )}
       </div>
     </section>
   )

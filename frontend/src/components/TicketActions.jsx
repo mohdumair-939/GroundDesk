@@ -32,21 +32,19 @@ export function ClosurePanel({ ticket, onSubmit, busy }) {
     <Card title="Your technician marked this ticket as solved" tone="teal">
       {resolution?.note && <p className="text-sm text-stone-700">{resolution.note}</p>}
       <p className="mt-3 text-sm font-medium text-stone-800">Is the problem fixed?</p>
-      {rejecting && (
-        <textarea
-          value={comment}
-          onChange={(e) => setComment(e.target.value)}
-          rows={2}
-          maxLength={400}
-          placeholder="What is still not working?"
-          className={textarea}
-          aria-label="What is still not working"
-        />
-      )}
+      <textarea
+        value={comment}
+        onChange={(e) => setComment(e.target.value)}
+        rows={2}
+        maxLength={400}
+        placeholder={rejecting ? 'What is still not working?' : 'Add a comment for the technician (optional)'}
+        className={textarea}
+        aria-label={rejecting ? 'What is still not working' : 'Comment for the technician'}
+      />
       <div className="mt-3 flex flex-wrap gap-2">
         {!rejecting ? (
           <>
-            <button onClick={() => onSubmit(true, '')} disabled={busy} className={`${btn} btn-solid bg-emerald-600 hover:bg-emerald-700`}>
+            <button onClick={() => onSubmit(true, comment.trim())} disabled={busy} className={`${btn} btn-solid bg-emerald-600 hover:bg-emerald-700`}>
               {busy ? 'Saving…' : 'Yes, close the ticket'}
             </button>
             <button onClick={() => setRejecting(true)} disabled={busy} className={`${btn} btn-solid bg-amber-500 hover:bg-amber-600`}>
