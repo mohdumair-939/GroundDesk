@@ -52,13 +52,13 @@ export default function TicketList() {
         </>
       )}
 
-      <div className="mb-4 flex flex-wrap gap-2">
+      <div className="mb-4 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
         <input
           type="search"
-          placeholder="Search code, title, email"
+          placeholder={isAdmin ? 'Search code, title, email' : 'Search your tickets'}
           value={filters.q}
           onChange={set('q')}
-          className={`${selectClass} min-w-0 flex-1 sm:max-w-xs`}
+          className={`${selectClass} col-span-2 min-w-0 py-2 sm:max-w-xs sm:flex-1 sm:py-1.5`}
           aria-label="Search tickets"
         />
         <select value={filters.status} onChange={set('status')} className={selectClass} aria-label="Status">
@@ -73,6 +73,11 @@ export default function TicketList() {
             <option key={c}>{c}</option>
           ))}
         </select>
+        {tickets && (
+          <p className="col-span-2 text-xs text-stone-500 sm:ml-auto" aria-live="polite">
+            {tickets.length} ticket{tickets.length === 1 ? '' : 's'}
+          </p>
+        )}
       </div>
 
       <ErrorBox error={error} onRetry={reload} />
@@ -93,10 +98,18 @@ export default function TicketList() {
         <ul className={`divide-y divide-stone-200 overflow-hidden card ${loading ? 'opacity-60' : ''}`}>
           {tickets.map((t) => (
             <li key={t.id} className={`border-l-4 ${STATUS_COLORS[t.status].edge}`}>
-              <Link to={`/tickets/${t.id}`} className="flex flex-col gap-1 px-5 py-3.5 transition-colors hover:bg-stone-50 sm:flex-row sm:items-center sm:gap-4">
-                <span className="w-20 shrink-0 font-mono text-xs text-stone-500">{t.ticket_code}</span>
+              <Link
+                to={`/tickets/${t.id}`}
+                className="group flex flex-col gap-2 px-4 py-3.5 transition-colors hover:bg-stone-50 sm:flex-row sm:items-center sm:gap-4 sm:px-5"
+              >
+                <span className="flex items-center justify-between gap-3 sm:contents">
+                  <span className="shrink-0 font-mono text-xs text-stone-500 sm:w-20">{t.ticket_code}</span>
+                  <span className="sm:hidden">
+                    <StatusBadge status={t.status} />
+                  </span>
+                </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate font-medium text-stone-900">{t.title}</span>
+                  <span className="block font-medium text-stone-900 group-hover:text-brand-800 sm:truncate">{t.title}</span>
                   {isAdmin && (
                     <span className="block truncate text-xs text-stone-500">
                       {t.user_name}
@@ -104,11 +117,13 @@ export default function TicketList() {
                     </span>
                   )}
                 </span>
-                <span className="flex flex-wrap items-center gap-2 text-xs text-stone-500">
+                <span className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-stone-500">
                   <CategoryTag category={t.category} />
                   <PriorityBadge priority={t.priority} />
-                  <StatusBadge status={t.status} />
-                  <span className="hidden md:inline">{formatDate(t.created_at)}</span>
+                  <span className="hidden sm:inline-flex">
+                    <StatusBadge status={t.status} />
+                  </span>
+                  <span className="sm:hidden lg:inline">{formatDate(t.created_at)}</span>
                 </span>
               </Link>
             </li>

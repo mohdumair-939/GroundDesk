@@ -114,11 +114,11 @@ export default function SolveForm({ ticket, onSubmit, onCancel, busy }) {
         )}
       </div>
 
-      <div className="flex gap-2">
+      <div className="flex flex-col gap-2 sm:flex-row">
         <button
           type="submit"
           disabled={busy || !ready}
-          className="btn-solid bg-teal-600 px-3 py-1.5 text-sm font-medium hover:bg-teal-700 disabled:opacity-50"
+          className="btn-solid bg-teal-600 px-3 py-2.5 text-sm font-medium hover:bg-teal-700 disabled:opacity-50 sm:py-1.5"
         >
           {busy ? 'Saving…' : 'Mark solved'}
         </button>

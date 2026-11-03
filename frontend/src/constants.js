@@ -1,4 +1,18 @@
 export const CATEGORIES = ['Network', 'Software', 'Hardware', 'Account/Access', 'Email', 'Other']
+// Shown under the category picker so employees know where a problem belongs.
+export const CATEGORY_HINTS = {
+  Network: 'VPN, Wi-Fi, slow internet, shared drives, certificate errors, reaching cloud servers.',
+  Software: 'Apps, Office files, OneDrive sync, browsers, Git, Docker, package installs, updates.',
+  Hardware: 'Laptop, battery and charging, monitors, printers, keyboard, mouse, Bluetooth.',
+  'Account/Access': 'Passwords, lockouts, MFA, single sign-on, cloud console or CLI access, file permissions.',
+  Email: 'Outlook, mailbox full, phishing, email on your phone.',
+  Other: 'Anything that does not fit the categories above.',
+}
+export const PRIORITY_HINTS = {
+  Low: 'Minor issue or a request; you can keep working.',
+  Medium: 'Slows down your work, but there is a workaround.',
+  High: 'You cannot work, or many people are affected.',
+}
 export const PRIORITIES = ['Low', 'Medium', 'High']
 export const ROLE_LABELS = { employee: 'Employee', technician: 'Technician', admin: 'Admin' }
 

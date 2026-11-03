@@ -1,15 +1,16 @@
 import { useState } from 'react'
 import { useAuth } from '../auth'
 import { ROLE_COLORS } from '../colors'
+import { ROLE_LABELS } from '../constants'
 
 const TONES = {
-  sky: 'bg-sky-50 ring-sky-200 text-sky-700',
-  violet: 'bg-violet-50 ring-violet-200 text-violet-700',
-  amber: 'bg-amber-50 ring-amber-200 text-amber-700',
-  orange: 'bg-orange-50 ring-orange-200 text-orange-700',
-  blue: 'bg-blue-50 ring-blue-200 text-blue-700',
-  teal: 'bg-teal-50 ring-teal-200 text-teal-700',
-  emerald: 'bg-emerald-50 ring-emerald-200 text-emerald-700',
+  sky: 'bg-sky-500',
+  violet: 'bg-violet-500',
+  amber: 'bg-amber-500',
+  orange: 'bg-orange-500',
+  blue: 'bg-blue-500',
+  teal: 'bg-teal-500',
+  emerald: 'bg-emerald-500',
 }
 
 function greeting(now) {
@@ -17,39 +18,43 @@ function greeting(now) {
   return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'
 }
 
-// Welcome banner for each role's home page. `stats`: [{ label, value, tone }]; values may be null while loading.
+// Welcome header for each role's home page. `stats`: [{ label, value, tone }]; values may be null while loading.
 export default function Hero({ subtitle, action, stats, className = 'mb-6' }) {
   const { user } = useAuth()
   const [now] = useState(() => new Date())
-  const b = ROLE_COLORS[user.role]
   const firstName = user.name.trim().split(/\s+/)[0]
   const today = now.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })
 
   return (
     <div className={`space-y-3 ${className}`}>
-      <div className={`relative overflow-hidden rounded-xl px-6 py-7 text-white sm:px-8 ${b.panel}`}>
-        <svg className="pointer-events-none absolute -top-6 right-0 h-48 w-72 max-sm:opacity-40" viewBox="0 0 288 192" aria-hidden="true">
-          <circle cx="226" cy="58" r="46" fill={b.shapes[0]} />
-          <rect x="132" y="96" width="84" height="84" rx="10" fill={b.shapes[1]} opacity="0.9" />
-          <path d="M288 192h-72a72 72 0 0 1 72-72Z" fill={b.shapes[2]} />
-          <circle cx="150" cy="40" r="8" fill="#fff" opacity="0.85" />
-        </svg>
-        <div className="relative max-w-lg">
-          <p className={`text-xs font-medium ${b.sub}`}>{today}</p>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-[1.75rem]">
-            {greeting(now)}, {firstName}
-          </h1>
-          {subtitle && <p className={`mt-1.5 text-sm ${b.sub}`}>{subtitle}</p>}
-          {action && <div className="mt-5">{action}</div>}
+      <div className="card relative overflow-hidden">
+        <div className="absolute inset-y-0 left-0 w-1 bg-brand-600" aria-hidden="true" />
+        <div className="flex flex-col gap-4 bg-linear-to-r from-brand-50/80 via-white to-white px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-7 sm:py-6">
+          <div className="min-w-0">
+            <p className="flex flex-wrap items-center gap-2 text-xs text-stone-500">
+              <span>{today}</span>
+              <span className={`rounded px-1.5 py-0.5 text-[11px] font-medium ring-1 ring-inset ${ROLE_COLORS[user.role].chip}`}>
+                {ROLE_LABELS[user.role]}
+              </span>
+            </p>
+            <h1 className="mt-1.5 text-xl font-semibold tracking-tight text-stone-900 sm:text-2xl">
+              {greeting(now)}, {firstName}
+            </h1>
+            {subtitle && <p className="mt-1 max-w-xl text-sm text-stone-600">{subtitle}</p>}
+          </div>
+          {action && <div className="shrink-0">{action}</div>}
         </div>
       </div>
 
       {stats && (
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           {stats.map((s) => (
-            <div key={s.label} className={`rounded-lg px-4 py-3 ring-1 ring-inset ${TONES[s.tone]}`}>
-              <p className="text-[1.625rem] leading-none font-semibold tabular-nums">{s.value ?? '–'}</p>
-              <p className="mt-1.5 text-xs font-medium text-stone-600">{s.label}</p>
+            <div key={s.label} className="card px-4 py-3.5">
+              <p className="flex items-center gap-2 text-xs font-medium text-stone-500">
+                <span className={`h-2 w-2 shrink-0 rounded-full ${TONES[s.tone]}`} aria-hidden="true" />
+                <span className="truncate">{s.label}</span>
+              </p>
+              <p className="mt-1.5 text-2xl leading-none font-semibold tabular-nums text-stone-900">{s.value ?? '–'}</p>
             </div>
           ))}
         </div>
@@ -58,6 +63,8 @@ export default function Hero({ subtitle, action, stats, className = 'mb-6' }) {
   )
 }
 
-// White button that sits on the coloured banner.
+// Primary and secondary actions placed in the header.
 export const heroButton =
-  'inline-flex items-center gap-1.5 rounded-md bg-white px-3.5 py-2 text-sm font-semibold text-stone-900 shadow-[0_1px_2px_rgb(0_0_0/0.15)] transition-colors hover:bg-stone-100'
+  'btn-primary inline-flex w-full items-center justify-center gap-1.5 px-4 py-2.5 text-sm font-medium sm:w-auto sm:py-2'
+export const heroSecondaryButton =
+  'btn-secondary inline-flex w-full items-center justify-center gap-1.5 px-4 py-2.5 text-sm font-medium sm:w-auto sm:py-2'

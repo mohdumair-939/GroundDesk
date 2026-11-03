@@ -24,12 +24,12 @@ export default function FeedbackPanel({ answered, onSubmit, busy }) {
         className="mt-2 block w-full field px-3 py-2 text-sm"
         aria-label="Feedback comment"
       />
-      <div className="mt-3 flex flex-wrap gap-2">
+      <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
         {answered && (
           <button
             onClick={() => submit(true)}
             disabled={busy}
-            className="btn-solid bg-emerald-600 px-3 py-1.5 hover:bg-emerald-700 text-sm font-medium disabled:opacity-50"
+            className="btn-solid bg-emerald-600 px-3 py-2.5 text-sm font-medium hover:bg-emerald-700 disabled:opacity-50 sm:py-1.5"
           >
             {busy && choice === true ? 'Saving…' : 'Yes, it is fixed'}
           </button>
@@ -37,7 +37,7 @@ export default function FeedbackPanel({ answered, onSubmit, busy }) {
         <button
           onClick={() => submit(false)}
           disabled={busy}
-          className="btn-solid bg-amber-500 px-3 py-1.5 hover:bg-amber-600 text-sm font-medium disabled:opacity-50"
+          className="btn-solid bg-amber-500 px-3 py-2.5 text-sm font-medium hover:bg-amber-600 disabled:opacity-50 sm:py-1.5"
         >
           {busy && choice === false ? 'Escalating…' : answered ? 'No, escalate to a technician' : 'Escalate to a technician'}
         </button>

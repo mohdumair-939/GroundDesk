@@ -6,7 +6,7 @@ import SolveForm from './SolveForm'
 
 const textarea = 'mt-1 block w-full field px-3 py-2 text-sm'
 const select = 'field px-2 py-1.5 text-sm'
-const btn = 'px-3 py-1.5 text-sm font-medium disabled:opacity-50'
+const btn = 'px-3 py-2.5 text-sm font-medium disabled:opacity-50 sm:py-1.5'
 
 function Card({ title, tone = 'slate', children }) {
   const tones = {
@@ -41,7 +41,7 @@ export function ClosurePanel({ ticket, onSubmit, busy }) {
         className={textarea}
         aria-label={rejecting ? 'What is still not working' : 'Comment for the technician'}
       />
-      <div className="mt-3 flex flex-wrap gap-2">
+      <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
         {!rejecting ? (
           <>
             <button onClick={() => onSubmit(true, comment.trim())} disabled={busy} className={`${btn} btn-solid bg-emerald-600 hover:bg-emerald-700`}>
@@ -60,7 +60,7 @@ export function ClosurePanel({ ticket, onSubmit, busy }) {
             >
               {busy ? 'Sending…' : 'Send back to technician'}
             </button>
-            <button onClick={() => setRejecting(false)} className="rounded-md px-3 py-1.5 text-sm font-medium text-stone-600 transition-colors hover:bg-stone-100 hover:text-stone-900">
+            <button onClick={() => setRejecting(false)} className="rounded-md px-3 py-2.5 text-sm sm:py-1.5 font-medium text-stone-600 transition-colors hover:bg-stone-100 hover:text-stone-900">
               Cancel
             </button>
           </>

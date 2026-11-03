@@ -58,4 +58,23 @@ body {
   .eyebrow {
     @apply text-[11px] font-medium tracking-[0.08em] text-stone-500 uppercase;
   }
+
+  /* Secondary (outlined) button. */
+  .btn-secondary {
+    @apply rounded-md border border-stone-300 bg-white text-stone-700 shadow-[0_1px_2px_rgb(28_25_23/0.05)] transition-colors hover:bg-stone-50 hover:text-stone-900;
+  }
+}
+
+/* Phones: iOS zooms into any field with text under 16px, so form fields use 16px there.
+   Unlayered so it wins over the text-sm utility on the same element. */
+@media (max-width: 639px) {
+  .field {
+    font-size: 16px;
+  }
+}
+
+/* Keep content clear of the notch / home indicator on phones. */
+body {
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
 }

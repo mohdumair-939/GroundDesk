@@ -95,75 +95,110 @@ export default function TicketDetail() {
 
   return (
     <section className="space-y-5">
-      <Link to={isAdmin ? '/tickets' : '/'} className="inline-flex items-center gap-1 text-sm text-stone-500 transition-colors hover:text-stone-900">
-        ← Back
+      <Link
+        to={isAdmin ? '/tickets' : '/'}
+        className="-ml-2 inline-flex items-center gap-1 rounded-md px-2 py-1 text-sm text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900"
+      >
+        <span aria-hidden="true">←</span> {isAdmin ? 'All tickets' : isTech ? 'My queue' : 'My tickets'}
       </Link>
 
-      <div className={`card border-t-4 p-6 ${STATUS_COLORS[ticket.status].edge.replace('border-l-', 'border-t-')}`}>
+      <div className={`card border-t-4 p-5 sm:p-6 ${STATUS_COLORS[ticket.status].edge.replace('border-l-', 'border-t-')}`}>
         <div className="flex flex-wrap items-center gap-2 text-sm text-stone-500">
           <span className="font-mono text-xs text-stone-500">{ticket.ticket_code}</span>
           <StatusBadge status={ticket.status} />
-          <PriorityBadge priority={ticket.priority} />
-          <CategoryTag category={ticket.category} />
         </div>
         <h1 className="page-title mt-3 break-words">{ticket.title}</h1>
-        <p className="mt-3 whitespace-pre-wrap break-words text-sm text-stone-700">{ticket.description}</p>
-        <p className="mt-4 text-xs text-stone-500">
-          Raised by {ticket.user_name} ({ticket.user_email}) · {formatDate(ticket.created_at)}
-        </p>
+        <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-relaxed text-stone-700">{ticket.description}</p>
       </div>
 
-      <ErrorBox error={actionError} />
+      <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_19rem]">
+        <div className="min-w-0 space-y-5">
+          <ErrorBox error={actionError} />
 
-      {isOwner && ticket.status === 'PENDING_APPROVAL' && (
-        <ClosurePanel ticket={ticket} busy={busy} onSubmit={(approved, comment) => run(() => sendClosure(id, approved, comment))} />
-      )}
-      {(isTech || isAdmin) && <TechnicianPanel ticket={ticket} busy={busy} onMove={(status, note, kbArticle) => run(() => updateStatus(id, status, note, kbArticle))} />}
-      {isAdmin && <AdminPanel key={`${ticket.priority}-${ticket.category}-${ticket.status}`} ticket={ticket} act={adminAct} busy={busy} />}
-
-      {ticket.suggestion ? (
-        <SuggestionCard suggestion={ticket.suggestion}>
-          {isOwner && ticket.status === 'SUGGESTION_PROVIDED' && (
-            <FeedbackPanel
-              answered={ticket.suggestion.answered}
-              onSubmit={(resolved, comment) => run(() => sendFeedback(id, resolved, comment))}
-              busy={busy}
-            />
+          {isOwner && ticket.status === 'PENDING_APPROVAL' && (
+            <ClosurePanel ticket={ticket} busy={busy} onSubmit={(approved, comment) => run(() => sendClosure(id, approved, comment))} />
           )}
-          {ticket.suggestion.feedback_resolved !== null && (
-            <p className="mt-4 border-t border-stone-200 pt-3 text-sm text-stone-600">
-              {ticket.suggestion.feedback_resolved
-                ? '✓ The employee confirmed this suggestion fixed the issue.'
-                : 'The employee reported this did not fix the issue, so the ticket was escalated.'}
-              {ticket.suggestion.feedback_comment && (
-                <span className="block italic text-stone-500">“{ticket.suggestion.feedback_comment}”</span>
+          {(isTech || isAdmin) && <TechnicianPanel ticket={ticket} busy={busy} onMove={(status, note, kbArticle) => run(() => updateStatus(id, status, note, kbArticle))} />}
+          {isAdmin && <AdminPanel key={`${ticket.priority}-${ticket.category}-${ticket.status}`} ticket={ticket} act={adminAct} busy={busy} />}
+
+          {ticket.suggestion ? (
+            <SuggestionCard suggestion={ticket.suggestion}>
+              {isOwner && ticket.status === 'SUGGESTION_PROVIDED' && (
+                <FeedbackPanel
+                  answered={ticket.suggestion.answered}
+                  onSubmit={(resolved, comment) => run(() => sendFeedback(id, resolved, comment))}
+                  busy={busy}
+                />
               )}
-            </p>
+              {ticket.suggestion.feedback_resolved !== null && (
+                <p className="mt-4 border-t border-stone-200 pt-3 text-sm text-stone-600">
+                  {ticket.suggestion.feedback_resolved
+                    ? '✓ The employee confirmed this suggestion fixed the issue.'
+                    : 'The employee reported this did not fix the issue, so the ticket was escalated.'}
+                  {ticket.suggestion.feedback_comment && (
+                    <span className="block italic text-stone-500">“{ticket.suggestion.feedback_comment}”</span>
+                  )}
+                </p>
+              )}
+            </SuggestionCard>
+          ) : (
+            ticket.status === 'OPEN' &&
+            (isOwner || isAdmin) && (
+              <SuggestionPending failed={polls >= POLL_LIMIT} onRetry={retrySuggestion} retrying={retrying}>
+                {isOwner && polls >= POLL_LIMIT && (
+                  <FeedbackPanel answered={false} onSubmit={(resolved, comment) => run(() => sendFeedback(id, resolved, comment))} busy={busy} />
+                )}
+              </SuggestionPending>
+            )
           )}
-        </SuggestionCard>
-      ) : (
-        ticket.status === 'OPEN' &&
-        (isOwner || isAdmin) && (
-          <SuggestionPending failed={polls >= POLL_LIMIT} onRetry={retrySuggestion} retrying={retrying}>
-            {isOwner && polls >= POLL_LIMIT && (
-              <FeedbackPanel answered={false} onSubmit={(resolved, comment) => run(() => sendFeedback(id, resolved, comment))} busy={busy} />
+
+          {(isTech || isAdmin) && ticket.kb_article && <KbArticleStatus article={ticket.kb_article} isAdmin={isAdmin} />}
+
+          <div className="card p-5">
+            <h2 className="mb-4 text-sm font-semibold text-stone-900">Activity</h2>
+            <Timeline history={ticket.history} />
+            {/* While the employee owes an approval, their comment goes with the decision above,
+                so a plain note cannot be mistaken for closing the ticket. */}
+            {!(isOwner && ticket.status === 'PENDING_APPROVAL') && (
+              <NoteForm busy={busy} onSubmit={(note) => run(() => addNote(id, note))} />
             )}
-          </SuggestionPending>
-        )
-      )}
+          </div>
+        </div>
 
-      {ticket.assignment && <AssignmentPanel assignment={ticket.assignment} />}
-      {(isTech || isAdmin) && ticket.kb_article && <KbArticleStatus article={ticket.kb_article} isAdmin={isAdmin} />}
-
-      <div className="card p-5">
-        <h2 className="mb-4 text-sm font-semibold text-stone-900">Activity</h2>
-        <Timeline history={ticket.history} />
-        {/* While the employee owes an approval, their comment goes with the decision above,
-            so a plain note cannot be mistaken for closing the ticket. */}
-        {!(isOwner && ticket.status === 'PENDING_APPROVAL') && (
-          <NoteForm busy={busy} onSubmit={(note) => run(() => addNote(id, note))} />
-        )}
+        <aside className="space-y-5 lg:sticky lg:top-20">
+          <Details ticket={ticket} />
+          {ticket.assignment && <AssignmentPanel assignment={ticket.assignment} />}
+        </aside>
       </div>
     </section>
+  )
+}
+
+function Details({ ticket }) {
+  const rows = [
+    ['Status', <StatusBadge key="s" status={ticket.status} />],
+    ['Priority', <PriorityBadge key="p" priority={ticket.priority} />],
+    ['Category', <CategoryTag key="c" category={ticket.category} />],
+    [
+      'Raised by',
+      <span key="r" className="block min-w-0">
+        <span className="block truncate font-medium text-stone-900">{ticket.user_name}</span>
+        <span className="block truncate text-xs text-stone-500">{ticket.user_email}</span>
+      </span>,
+    ],
+    ['Created', formatDate(ticket.created_at)],
+  ]
+  return (
+    <div className="card p-5">
+      <h2 className="text-sm font-semibold text-stone-900">Details</h2>
+      <dl className="mt-3 divide-y divide-stone-100 text-sm">
+        {rows.map(([label, value]) => (
+          <div key={label} className="flex items-center justify-between gap-4 py-2.5 first:pt-0 last:pb-0">
+            <dt className="shrink-0 text-stone-500">{label}</dt>
+            <dd className="min-w-0 text-right text-stone-800">{value}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
   )
 }

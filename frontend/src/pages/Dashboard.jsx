@@ -1,6 +1,6 @@
 import { Link } from 'react-router'
 import { getStats } from '../api'
-import Hero, { heroButton } from '../components/Hero'
+import Hero, { heroSecondaryButton } from '../components/Hero'
 import { ErrorBox, Loading } from '../components/States'
 import { CATEGORY_COLORS, STATUS_COLORS } from '../colors'
 import { STATUS_LABELS } from '../constants'
@@ -61,7 +61,7 @@ function BarList({ rows, max, linkFor, colorFor = () => BAR }) {
         const width = max ? Math.max((value / max) * 100, value ? 2 : 0) : 0
         const inner = (
           <>
-            <span className="w-36 shrink-0 truncate text-sm text-stone-700">{label}</span>
+            <span className="w-28 shrink-0 truncate text-sm text-stone-700 sm:w-36">{label}</span>
             <span className="relative h-3 flex-1 rounded-sm bg-stone-100" aria-hidden="true">
               <span className="absolute inset-y-0 left-0 rounded-sm" style={{ width: `${width}%`, background: colorFor(key) }} />
             </span>
@@ -141,7 +141,7 @@ export default function Dashboard() {
         className=""
         subtitle={`${open} ticket${open === 1 ? ' is' : 's are'} open with technicians. Here is how the help desk is doing right now.`}
         action={
-          <button onClick={reload} className={heroButton}>
+          <button onClick={reload} className={heroSecondaryButton}>
             Refresh
           </button>
         }
@@ -171,7 +171,7 @@ export default function Dashboard() {
       <div className="grid gap-5 lg:grid-cols-2">
         <Card title="By department" subtitle="Escalated tickets routed to each team">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full min-w-[26rem] text-sm">
               <thead>
                 <tr className="text-left text-xs text-stone-500">
                   <th className="pb-2 font-medium">Department</th>

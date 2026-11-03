@@ -43,7 +43,7 @@ export default function Login() {
   }
 
   return (
-    <AuthLayout role={role}>
+    <AuthLayout>
       <h2 className="text-2xl font-semibold tracking-tight text-stone-900">Sign in</h2>
       <p className="mt-1.5 text-sm text-stone-500">{OPTIONS.find((o) => o.role === role).text}</p>
 

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import { createTicket } from '../api'
 import { ErrorBox } from '../components/States'
-import { CATEGORIES, PRIORITIES } from '../constants'
+import { CATEGORIES, CATEGORY_HINTS, PRIORITIES, PRIORITY_HINTS } from '../constants'
 
 const EMPTY = { title: '', description: '', category: '', priority: 'Medium' }
 
@@ -27,7 +27,7 @@ function Field({ label, name, error, hint, children }) {
       {error ? (
         <span className="mt-1 block text-xs text-red-600">{error}</span>
       ) : (
-        hint && <span className="mt-1 block text-xs text-stone-400">{hint}</span>
+        hint && <span className="mt-1 block text-xs text-stone-500">{hint}</span>
       )}
     </label>
   )
@@ -67,7 +67,7 @@ export default function NewTicket() {
         Describe the problem. The help desk will suggest troubleshooting steps from its knowledge base.
       </p>
 
-      <form onSubmit={onSubmit} noValidate className="card mt-6 space-y-5 p-6">
+      <form onSubmit={onSubmit} noValidate className="card mt-5 space-y-5 p-5 sm:mt-6 sm:p-6">
         <Field label="Title" name="title" error={errors.title} hint={`${form.title.trim().length}/120`}>
           <input
             id="title"
@@ -83,11 +83,11 @@ export default function NewTicket() {
           label="Description"
           name="description"
           error={errors.description}
-          hint="What happened, any error message, and what you already tried."
+          hint="What happened, the exact error message, when it started, and what you already tried."
         >
           <textarea
             id="description"
-            rows={5}
+            rows={6}
             value={form.description}
             onChange={set('description')}
             className={inputClass(errors.description)}
@@ -95,7 +95,7 @@ export default function NewTicket() {
         </Field>
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Category" name="category" error={errors.category}>
+          <Field label="Category" name="category" error={errors.category} hint={CATEGORY_HINTS[form.category] || 'Pick the closest match; it decides which team helps you.'}>
             <select id="category" value={form.category} onChange={set('category')} className={inputClass(errors.category)}>
               <option value="">Select…</option>
               {CATEGORIES.map((c) => (
@@ -103,7 +103,7 @@ export default function NewTicket() {
               ))}
             </select>
           </Field>
-          <Field label="Priority" name="priority" error={errors.priority}>
+          <Field label="Priority" name="priority" error={errors.priority} hint={PRIORITY_HINTS[form.priority]}>
             <select id="priority" value={form.priority} onChange={set('priority')} className={inputClass(errors.priority)}>
               {PRIORITIES.map((p) => (
                 <option key={p}>{p}</option>
@@ -114,18 +114,18 @@ export default function NewTicket() {
 
         <ErrorBox error={submitError} />
 
-        <div className="flex justify-end gap-2">
+        <div className="flex flex-col-reverse gap-2 border-t border-stone-200 pt-5 sm:flex-row sm:justify-end">
           <button
             type="button"
             onClick={() => navigate(-1)}
-            className="rounded-md px-3 py-2 text-sm font-medium text-stone-600 transition-colors hover:bg-stone-100 hover:text-stone-900"
+            className="rounded-md px-3 py-2.5 text-sm font-medium sm:py-2 text-stone-600 transition-colors hover:bg-stone-100 hover:text-stone-900"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={submitting}
-            className="btn-primary px-4 py-2 text-sm font-medium disabled:opacity-50"
+            className="btn-primary px-4 py-2.5 text-sm font-medium disabled:opacity-50 sm:py-2"
           >
             {submitting ? 'Submitting…' : 'Submit ticket'}
           </button>
