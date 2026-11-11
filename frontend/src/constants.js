@@ -52,6 +52,6 @@ export const KB_STATUS = {
   REJECTED: {
     label: 'Not added',
     text: 'This fix was not added to the knowledge base.',
-    pill: 'bg-stone-100 text-stone-600 ring-stone-300',
+    pill: 'bg-slate-100 text-slate-600 ring-slate-300',
   },
 }

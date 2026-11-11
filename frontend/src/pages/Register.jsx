@@ -5,8 +5,7 @@ import AuthLayout from '../components/AuthLayout'
 import PasswordInput from '../components/PasswordInput'
 import ServerStatus from '../components/ServerStatus'
 import { ErrorBox } from '../components/States'
-
-const inputClass = 'field mt-1.5 block w-full px-3 py-2 text-sm'
+import { Spinner } from '../components/ui'
 
 export default function Register() {
   const { register } = useAuth()
@@ -34,50 +33,52 @@ export default function Register() {
   return (
     <AuthLayout>
       <form onSubmit={onSubmit} className="space-y-4">
-        <div className="mb-6">
-          <h2 className="text-2xl font-semibold tracking-tight text-stone-900">Create an employee account</h2>
-          <p className="mt-1.5 text-sm text-stone-500">
-            Use your work email. Each email can have only one account and one role.
-          </p>
+        <div className="mb-7">
+          <h2 className="text-2xl font-semibold tracking-tight text-slate-900">Create your account</h2>
+          <p className="mt-1.5 text-sm text-slate-500">Employee accounts only. Use your work email; each email has one account and one role.</p>
         </div>
-        <label className="block">
-          <span className="text-sm font-medium text-stone-700">Full name</span>
-          <input required minLength={2} value={form.name} onChange={set('name')} className={inputClass} autoComplete="name" />
-        </label>
-        <label className="block">
-          <span className="text-sm font-medium text-stone-700">Email</span>
-          <input type="email" required value={form.email} onChange={set('email')} className={inputClass} autoComplete="email" />
-        </label>
-        <PasswordInput
-          label="Password"
-          required
-          value={form.password}
-          onChange={set('password')}
-          autoComplete="new-password"
-          hint="At least 8 characters."
-        />
-        <PasswordInput
-          label="Confirm password"
-          required
-          value={form.confirm}
-          onChange={set('confirm')}
-          autoComplete="new-password"
-        />
+        <div>
+          <label htmlFor="reg-name" className="label">
+            Full name
+          </label>
+          <input id="reg-name" required minLength={2} value={form.name} onChange={set('name')} className="field mt-1.5" autoComplete="name" />
+        </div>
+        <div>
+          <label htmlFor="reg-email" className="label">
+            Work email
+          </label>
+          <input
+            id="reg-email"
+            type="email"
+            required
+            value={form.email}
+            onChange={set('email')}
+            className="field mt-1.5"
+            autoComplete="email"
+            placeholder="name@company.com"
+          />
+        </div>
+        <PasswordInput label="Password" required value={form.password} onChange={set('password')} autoComplete="new-password" hint="At least 8 characters." />
+        <PasswordInput label="Confirm password" required value={form.confirm} onChange={set('confirm')} autoComplete="new-password" />
         <ErrorBox error={error} />
-        <button
-          type="submit"
-          disabled={busy}
-          className="btn-solid w-full bg-sky-600 px-4 py-2 text-sm font-medium hover:bg-sky-700 disabled:opacity-50"
-        >
-          {busy ? 'Creating account…' : 'Create account'}
+        <button type="submit" disabled={busy} className="btn btn-primary btn-lg w-full">
+          {busy ? (
+            <>
+              <Spinner /> Creating account…
+            </>
+          ) : (
+            'Create account'
+          )}
         </button>
-        <p className="border-t border-stone-200 pt-5 text-sm text-stone-500">
+        <div className="border-t border-slate-200 pt-6 text-sm text-slate-500">
           Already registered?{' '}
-          <Link to="/login?as=employee" className="font-medium text-brand-700 underline decoration-brand-200 underline-offset-4 hover:decoration-brand-700">
+          <Link to="/login?as=employee" className="link">
             Sign in
           </Link>
-        </p>
-        <ServerStatus />
+          <div className="mt-4">
+            <ServerStatus />
+          </div>
+        </div>
       </form>
     </AuthLayout>
   )

@@ -1,7 +1,8 @@
+import { AnimatePresence, motion } from 'motion/react'
+import { BookOpen, CircleCheck } from 'lucide-react'
 import { useState } from 'react'
-
-const field = 'mt-1 block w-full field px-3 py-2 text-sm'
-const label = 'block text-sm font-medium text-stone-700'
+import { Spinner } from './ui'
+import { EASE } from '../motion'
 
 // Limits match the backend's KBSubmission schema.
 const LIMITS = { title: [5, 120], problem: [20, 2000], cause: [0, 1000], steps: [20, 4000] }
@@ -40,97 +41,102 @@ export default function SolveForm({ ticket, onSubmit, onCancel, busy }) {
           : null
         onSubmit(note.trim(), kb)
       }}
-      className="space-y-3"
+      className="space-y-5"
     >
       <div>
-        <label className={label} htmlFor={id('note')}>
+        <label className="label" htmlFor={id('note')}>
           What did you do to fix it?
         </label>
-        <p className="text-xs text-stone-500">Shown to the employee, who confirms the fix before the ticket closes.</p>
+        <p className="mt-0.5 text-xs text-slate-500">Shown to the employee, who confirms the fix before the ticket closes.</p>
         <textarea
           id={id('note')}
           required
-          rows={2}
+          rows={3}
           maxLength={400}
           value={note}
           onChange={(e) => setNote(e.target.value)}
-          className={field}
+          className="field mt-2"
           placeholder="e.g. Cleaned the fan and vents, and updated the BIOS"
         />
       </div>
 
-      <div className="rounded-md border border-violet-200 bg-violet-50/60 p-3">
-        <label className="flex items-start gap-2 text-sm font-medium text-violet-950">
-          <input type="checkbox" checked={share} onChange={(e) => setShare(e.target.checked)} className="mt-0.5 accent-violet-600" />
+      <div className={`rounded-xl border p-4 transition-colors ${share ? 'border-brand-200 bg-brand-50/40' : 'border-slate-200'}`}>
+        <label className="flex cursor-pointer items-start gap-3">
+          <input type="checkbox" checked={share} onChange={(e) => setShare(e.target.checked)} className="mt-0.5 h-4 w-4 shrink-0 accent-brand-600" />
           <span>
-            Add this fix to the knowledge base
-            <span className="block text-xs font-normal text-violet-900/80">
-              So the AI can solve similar problems next time. An admin reviews it after the employee confirms the fix. Untick
-              it for one-off fixes.
+            <span className="flex items-center gap-1.5 text-sm font-medium text-slate-900">
+              <BookOpen className="h-4 w-4 text-brand-600" aria-hidden="true" />
+              Add this fix to the knowledge base
+            </span>
+            <span className="mt-0.5 block text-xs leading-relaxed text-slate-500">
+              So the AI can solve similar problems next time. An admin reviews it after the employee confirms the fix. Untick it for one-off fixes.
             </span>
           </span>
         </label>
 
-        {share && (
-          <div className="mt-3 space-y-3">
-            <div>
-              <label className={label} htmlFor={id('title')}>
-                Article title
-              </label>
-              <input id={id('title')} maxLength={120} value={article.title} onChange={set('title')} className={field} />
-            </div>
-            <div>
-              <label className={label} htmlFor={id('problem')}>
-                Problem / symptoms
-              </label>
-              <p className="text-xs text-stone-500">Describe it the way a user would. Leave out names and device IDs.</p>
-              <textarea id={id('problem')} rows={3} maxLength={2000} value={article.problem} onChange={set('problem')} className={field} />
-            </div>
-            <div>
-              <label className={label} htmlFor={id('cause')}>
-                Cause <span className="font-normal text-stone-400">(optional)</span>
-              </label>
-              <textarea id={id('cause')} rows={2} maxLength={1000} value={article.cause} onChange={set('cause')} className={field} />
-            </div>
-            <div>
-              <label className={label} htmlFor={id('steps')}>
-                Troubleshooting steps
-              </label>
-              <p className="text-xs text-stone-500">One numbered step per line, most likely fix first. No passwords or personal details.</p>
-              <textarea
-                id={id('steps')}
-                rows={5}
-                maxLength={4000}
-                value={article.steps}
-                onChange={set('steps')}
-                className={`${field} font-mono text-[13px]`}
-                placeholder={'1. …\n2. …\n3. If this does not help, escalate to …'}
-              />
-              {article.steps.trim().length > 0 && article.steps.trim().length < LIMITS.steps[0] && (
-                <p className="mt-1 text-xs text-amber-700">Add a little more detail (at least {LIMITS.steps[0]} characters).</p>
-              )}
-            </div>
-          </div>
-        )}
+        <AnimatePresence initial={false}>
+          {share && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.25, ease: EASE }}
+              className="overflow-hidden"
+            >
+              <div className="space-y-4 pt-4">
+                <div>
+                  <label className="label" htmlFor={id('title')}>
+                    Article title
+                  </label>
+                  <input id={id('title')} maxLength={120} value={article.title} onChange={set('title')} className="field mt-1.5" />
+                </div>
+                <div>
+                  <label className="label" htmlFor={id('problem')}>
+                    Problem / symptoms
+                  </label>
+                  <p className="mt-0.5 text-xs text-slate-500">Describe it the way a user would. Leave out names and device IDs.</p>
+                  <textarea id={id('problem')} rows={3} maxLength={2000} value={article.problem} onChange={set('problem')} className="field mt-1.5" />
+                </div>
+                <div>
+                  <label className="label" htmlFor={id('cause')}>
+                    Cause <span className="font-normal text-slate-400">(optional)</span>
+                  </label>
+                  <textarea id={id('cause')} rows={2} maxLength={1000} value={article.cause} onChange={set('cause')} className="field mt-1.5" />
+                </div>
+                <div>
+                  <label className="label" htmlFor={id('steps')}>
+                    Troubleshooting steps
+                  </label>
+                  <p className="mt-0.5 text-xs text-slate-500">One numbered step per line, most likely fix first. No passwords or personal details.</p>
+                  <textarea
+                    id={id('steps')}
+                    rows={5}
+                    maxLength={4000}
+                    value={article.steps}
+                    onChange={set('steps')}
+                    className="field mt-1.5 font-mono text-[13px]"
+                    placeholder={'1. …\n2. …\n3. If this does not help, escalate to …'}
+                  />
+                  {article.steps.trim().length > 0 && article.steps.trim().length < LIMITS.steps[0] && (
+                    <p className="mt-1.5 text-xs font-medium text-amber-700">Add a little more detail (at least {LIMITS.steps[0]} characters).</p>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
-      <div className="flex flex-col gap-2 sm:flex-row">
-        <button
-          type="submit"
-          disabled={busy || !ready}
-          className="btn-solid bg-teal-600 px-3 py-2.5 text-sm font-medium hover:bg-teal-700 disabled:opacity-50 sm:py-1.5"
-        >
-          {busy ? 'Saving…' : 'Mark solved'}
-        </button>
+      <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
         {onCancel && (
-          <button
-            type="button"
-            onClick={onCancel}
-            className="rounded-md px-3 py-1.5 text-sm font-medium text-stone-600 transition-colors hover:bg-stone-100 hover:text-stone-900"
-          >
+          <button type="button" onClick={onCancel} className="btn btn-ghost">
             Cancel
           </button>
         )}
+        <button type="submit" disabled={busy || !ready} className="btn btn-primary">
+          {busy ? <Spinner /> : <CircleCheck className="h-4 w-4" aria-hidden="true" />}
+          {busy ? 'Saving…' : 'Mark solved'}
+        </button>
       </div>
     </form>
   )

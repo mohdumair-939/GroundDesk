@@ -1,28 +1,61 @@
 @import "tailwindcss";
 
+/* ---------------------------------------------------------------- design tokens
+   Indigo is the single accent. Surfaces are cool neutrals (slate) on a near-white canvas,
+   with a deep navy for the navigation chrome and the sign-in panel. */
 @theme {
-  --font-sans: "Geist", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, monospace;
-  --font-serif: "Instrument Serif", ui-serif, Georgia, serif;
+  --font-sans: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
-  /* Pine green: the single brand colour. Everything else is warm neutral (stone). */
-  --color-brand-50: #f0f6f3;
-  --color-brand-100: #dcebe3;
-  --color-brand-200: #b9d6c7;
-  --color-brand-300: #8bbaa3;
-  --color-brand-500: #3d8467;
-  --color-brand-600: #2c6b52;
-  --color-brand-700: #235843;
-  --color-brand-800: #1c4636;
-  --color-brand-900: #14332a;
-  --color-brand-950: #0c211b;
+  --color-brand-50: #eef2ff;
+  --color-brand-100: #e0e7ff;
+  --color-brand-200: #c7d2fe;
+  --color-brand-300: #a5b4fc;
+  --color-brand-400: #818cf8;
+  --color-brand-500: #6366f1;
+  --color-brand-600: #4f46e5;
+  --color-brand-700: #4338ca;
+  --color-brand-800: #3730a3;
+  --color-brand-900: #312e81;
+  --color-brand-950: #1e1b4b;
 
-  --color-paper: #f7f6f2;
+  --color-navy-600: #2a3553;
+  --color-navy-700: #1c2540;
+  --color-navy-800: #131b30;
+  --color-navy-900: #0c1222;
+  --color-navy-950: #070b16;
+
+  --color-canvas: #f6f7f9;
+
+  --shadow-card: 0 1px 2px rgb(15 23 42 / 0.04), 0 1px 3px rgb(15 23 42 / 0.03);
+  --shadow-raised: 0 1px 2px rgb(15 23 42 / 0.05), 0 8px 24px -6px rgb(15 23 42 / 0.12);
+  --shadow-overlay: 0 24px 48px -12px rgb(15 23 42 / 0.28), 0 0 0 1px rgb(15 23 42 / 0.06);
+
+  --animate-shimmer: shimmer 1.6s ease-in-out infinite;
+  --animate-drift: drift 22s ease-in-out infinite alternate;
+
+  @keyframes shimmer {
+    0% { background-position: 100% 0; }
+    100% { background-position: -100% 0; }
+  }
+  @keyframes drift {
+    0% { transform: translate3d(0, 0, 0) scale(1); }
+    100% { transform: translate3d(6%, -4%, 0) scale(1.08); }
+  }
+}
+
+/* ---------------------------------------------------------------- base */
+html {
+  -webkit-text-size-adjust: 100%;
+  scrollbar-gutter: stable;
 }
 
 body {
-  @apply bg-paper font-sans text-stone-800 antialiased;
+  @apply bg-canvas font-sans text-slate-800 antialiased;
   font-feature-settings: "ss01", "cv11";
+  /* Keep content clear of the notch / home indicator on phones. */
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
 }
 
 ::selection {
@@ -30,38 +63,95 @@ body {
 }
 
 :focus-visible {
-  @apply outline-2 outline-offset-2 outline-brand-600;
+  @apply outline-2 outline-offset-2 outline-brand-500;
 }
 
+/* ---------------------------------------------------------------- components */
 @layer components {
   .card {
-    @apply rounded-lg border border-stone-200 bg-white shadow-[0_1px_2px_rgb(28_25_23/0.04)];
+    @apply rounded-xl border border-slate-200/80 bg-white shadow-card;
   }
 
-  .btn-primary {
-    @apply rounded-md bg-brand-700 text-white shadow-[inset_0_1px_0_rgb(255_255_255/0.12),0_1px_2px_rgb(12_33_27/0.2)] transition-colors hover:bg-brand-800;
-  }
-
-  /* Coloured solid button; pair with a bg-* / hover:bg-* utility for its meaning. */
-  .btn-solid {
-    @apply rounded-md text-white shadow-[inset_0_1px_0_rgb(255_255_255/0.15),0_1px_2px_rgb(28_25_23/0.2)] transition-colors;
-  }
-
-  .field {
-    @apply rounded-md border border-stone-300 bg-white shadow-[0_1px_2px_rgb(28_25_23/0.04)] transition-colors placeholder:text-stone-400 hover:border-stone-400 focus:border-brand-600 focus:ring-3 focus:ring-brand-600/15 focus:outline-none;
+  .card-interactive {
+    @apply transition-[box-shadow,border-color,transform] duration-200 hover:border-slate-300 hover:shadow-raised;
   }
 
   .page-title {
-    @apply text-[1.375rem] leading-tight font-semibold tracking-tight text-stone-900;
+    @apply text-[1.5rem] leading-tight font-semibold tracking-tight text-slate-900 sm:text-[1.75rem];
+  }
+
+  .section-title {
+    @apply text-sm font-semibold text-slate-900;
   }
 
   .eyebrow {
-    @apply text-[11px] font-medium tracking-[0.08em] text-stone-500 uppercase;
+    @apply text-[11px] font-medium tracking-[0.08em] text-slate-500 uppercase;
   }
 
-  /* Secondary (outlined) button. */
+  .label {
+    @apply block text-[13px] font-medium text-slate-700;
+  }
+
+  .hint {
+    @apply mt-1.5 block text-xs leading-relaxed text-slate-500;
+  }
+
+  /* Buttons: one base plus a variant. Sizes via btn-sm / btn-lg. */
+  .btn {
+    @apply inline-flex h-9 shrink-0 cursor-pointer items-center justify-center gap-2 rounded-lg px-3.5 text-sm font-medium whitespace-nowrap transition-[background-color,border-color,color,box-shadow,transform] duration-150 select-none active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50;
+  }
+  .btn-sm {
+    @apply h-8 gap-1.5 px-2.5 text-[13px];
+  }
+  .btn-lg {
+    @apply h-10 px-4;
+  }
+  .btn-primary {
+    @apply bg-brand-600 text-white shadow-[inset_0_1px_0_rgb(255_255_255/0.14),0_1px_2px_rgb(30_27_75/0.25)] hover:bg-brand-700;
+  }
   .btn-secondary {
-    @apply rounded-md border border-stone-300 bg-white text-stone-700 shadow-[0_1px_2px_rgb(28_25_23/0.05)] transition-colors hover:bg-stone-50 hover:text-stone-900;
+    @apply border border-slate-300 bg-white text-slate-700 shadow-[0_1px_2px_rgb(15_23_42/0.05)] hover:border-slate-400 hover:bg-slate-50 hover:text-slate-900;
+  }
+  .btn-ghost {
+    @apply text-slate-600 hover:bg-slate-100 hover:text-slate-900;
+  }
+  .btn-success {
+    @apply bg-emerald-600 text-white shadow-[inset_0_1px_0_rgb(255_255_255/0.14),0_1px_2px_rgb(6_78_59/0.25)] hover:bg-emerald-700;
+  }
+  .btn-danger {
+    @apply bg-red-600 text-white shadow-[inset_0_1px_0_rgb(255_255_255/0.14),0_1px_2px_rgb(127_29_29/0.25)] hover:bg-red-700;
+  }
+  .btn-danger-ghost {
+    @apply text-red-600 hover:bg-red-50 hover:text-red-700;
+  }
+
+  /* Text inputs, textareas and selects. */
+  .field {
+    @apply block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-[0_1px_2px_rgb(15_23_42/0.04)] transition-[border-color,box-shadow] duration-150 placeholder:text-slate-400 hover:border-slate-400 focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15 focus:outline-none disabled:bg-slate-50 disabled:text-slate-500;
+  }
+  .field-error {
+    @apply border-red-400 hover:border-red-500 focus:border-red-500 focus:ring-red-500/15;
+  }
+  select.field {
+    @apply appearance-none bg-no-repeat pr-9;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-position: right 0.6rem center;
+    background-size: 1rem;
+  }
+
+  .pill {
+    @apply inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap ring-1 ring-inset;
+  }
+
+  .skeleton {
+    @apply rounded-md bg-slate-200/70;
+    background-image: linear-gradient(90deg, transparent 0%, rgb(255 255 255 / 0.65) 50%, transparent 100%);
+    background-size: 200% 100%;
+    animation: var(--animate-shimmer);
+  }
+
+  .link {
+    @apply font-medium text-brand-700 underline decoration-brand-200 underline-offset-4 transition-colors hover:decoration-brand-600;
   }
 }
 
@@ -73,8 +163,24 @@ body {
   }
 }
 
-/* Keep content clear of the notch / home indicator on phones. */
-body {
-  padding-left: env(safe-area-inset-left);
-  padding-right: env(safe-area-inset-right);
+/* Reduced motion: stop decorative CSS animation and transitions (Framer Motion is handled by
+   <MotionConfig reducedMotion="user"> in main.jsx). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .skeleton {
+    background-image: none;
+  }
+}
+
+/* Thin, quiet scrollbars inside the navigation drawer and overflow regions. */
+.scroll-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(148 163 184 / 0.35) transparent;
 }

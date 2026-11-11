@@ -1,3 +1,5 @@
+import { motion } from 'motion/react'
+import { ArrowRight, Headset, ShieldCheck, UserRound } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router'
 import { useAuth } from '../auth'
@@ -5,13 +7,14 @@ import AuthLayout from '../components/AuthLayout'
 import PasswordInput from '../components/PasswordInput'
 import ServerStatus from '../components/ServerStatus'
 import { ErrorBox } from '../components/States'
-import { ROLE_COLORS } from '../colors'
+import { Spinner } from '../components/ui'
+import { EASE } from '../motion'
 import { ROLE_LABELS } from '../constants'
 
 const OPTIONS = [
-  { role: 'employee', text: 'Raise IT tickets and follow their progress.' },
-  { role: 'technician', text: 'Work on the tickets assigned to you.' },
-  { role: 'admin', text: 'Oversee all tickets, staff and accounts.' },
+  { role: 'employee', Icon: UserRound, text: 'Raise IT tickets and follow their progress.' },
+  { role: 'technician', Icon: Headset, text: 'Work on the tickets assigned to you.' },
+  { role: 'admin', Icon: ShieldCheck, text: 'Oversee all tickets, staff and accounts.' },
 ]
 
 export default function Login() {
@@ -29,6 +32,17 @@ export default function Login() {
     setError(null)
   }
 
+  // Arrow keys move between the role options, as in a native radio group.
+  function onRoleKey(e) {
+    const i = OPTIONS.findIndex((o) => o.role === role)
+    const step = e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1 : e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? -1 : 0
+    if (!step) return
+    e.preventDefault()
+    const next = OPTIONS[(i + step + OPTIONS.length) % OPTIONS.length].role
+    choose(next)
+    e.currentTarget.querySelector(`[data-role="${next}"]`)?.focus()
+  }
+
   async function onSubmit(e) {
     e.preventDefault()
     setBusy(true)
@@ -44,65 +58,84 @@ export default function Login() {
 
   return (
     <AuthLayout>
-      <h2 className="text-2xl font-semibold tracking-tight text-stone-900">Sign in</h2>
-      <p className="mt-1.5 text-sm text-stone-500">{OPTIONS.find((o) => o.role === role).text}</p>
+      <h2 className="text-2xl font-semibold tracking-tight text-slate-900">Welcome back</h2>
+      <p className="mt-1.5 text-sm text-slate-500">Sign in to your GroundDesk workspace.</p>
 
-      <div
-        className="mt-6 grid grid-cols-3 gap-1 rounded-lg border border-stone-200 bg-stone-100 p-1"
-        role="radiogroup"
-        aria-label="Choose how to sign in"
-      >
-        {OPTIONS.map((o) => {
-          const selected = o.role === role
+      <div className="mt-7 grid grid-cols-3 gap-1 rounded-xl bg-slate-100 p-1" role="radiogroup" aria-label="Choose how to sign in" onKeyDown={onRoleKey}>
+        {OPTIONS.map(({ role: r, Icon }) => {
+          const selected = r === role
           return (
             <button
-              key={o.role}
+              key={r}
               type="button"
               role="radio"
+              data-role={r}
               aria-checked={selected}
-              onClick={() => choose(o.role)}
-              className={`rounded-md px-2 py-1.5 text-sm font-medium transition-colors ${
-                selected ? `bg-white ${ROLE_COLORS[o.role].ink} shadow-[0_1px_2px_rgb(28_25_23/0.1)] ring-1 ring-stone-200` : 'text-stone-500 hover:text-stone-800'
+              tabIndex={selected ? 0 : -1}
+              onClick={() => choose(r)}
+              className={`relative flex items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-sm font-medium transition-colors ${
+                selected ? 'text-slate-900' : 'text-slate-500 hover:text-slate-800'
               }`}
             >
-              {ROLE_LABELS[o.role]}
+              {selected && (
+                <motion.span
+                  layoutId="role-pill"
+                  className="absolute inset-0 rounded-lg bg-white shadow-[0_1px_2px_rgb(15_23_42/0.08),0_1px_3px_rgb(15_23_42/0.06)] ring-1 ring-slate-200/70"
+                  transition={{ duration: 0.3, ease: EASE }}
+                />
+              )}
+              <Icon className={`relative hidden h-4 w-4 sm:block ${selected ? 'text-brand-600' : ''}`} aria-hidden="true" />
+              <span className="relative">{ROLE_LABELS[r]}</span>
             </button>
           )
         })}
       </div>
+      <motion.p key={role} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-2.5 text-xs text-slate-500" aria-live="polite">
+        {OPTIONS.find((o) => o.role === role).text}
+      </motion.p>
 
       <form onSubmit={onSubmit} className="mt-6 space-y-4">
-        <label className="block">
-          <span className="text-sm font-medium text-stone-700">Work email</span>
+        <div>
+          <label htmlFor="login-email" className="label">
+            Work email
+          </label>
           <input
+            id="login-email"
             type="email"
             required
             autoComplete="username"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="field mt-1.5 block w-full px-3 py-2 text-sm"
+            className="field mt-1.5"
             placeholder="name@company.com"
           />
-        </label>
+        </div>
         <PasswordInput label="Password" required value={password} onChange={(e) => setPassword(e.target.value)} />
         <ErrorBox error={error} />
-        <button type="submit" disabled={busy} className={`btn-solid w-full px-4 py-2 text-sm font-medium disabled:opacity-50 ${ROLE_COLORS[role].button}`}>
-          {busy ? 'Signing in…' : `Continue as ${ROLE_LABELS[role].toLowerCase()}`}
+        <button type="submit" disabled={busy} className="btn btn-primary btn-lg group w-full">
+          {busy ? (
+            <>
+              <Spinner /> Signing in…
+            </>
+          ) : (
+            <>
+              Continue as {ROLE_LABELS[role].toLowerCase()}
+              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+            </>
+          )}
         </button>
       </form>
 
-      <div className="mt-6 border-t border-stone-200 pt-5 text-sm">
+      <div className="mt-8 border-t border-slate-200 pt-6 text-sm">
         {role === 'employee' ? (
-          <p className="text-stone-500">
+          <p className="text-slate-500">
             New here?{' '}
-            <Link to="/register" className="font-medium text-brand-700 underline decoration-brand-200 underline-offset-4 hover:decoration-brand-700">
+            <Link to="/register" className="link">
               Create an employee account
             </Link>
           </p>
         ) : (
-          <p className="text-stone-500">
-            {ROLE_LABELS[role]} accounts are created by the help desk. Contact your admin if you cannot sign in.
-          </p>
+          <p className="text-slate-500">{ROLE_LABELS[role]} accounts are created by the help desk. Contact your admin if you cannot sign in.</p>
         )}
         <div className="mt-4">
           <ServerStatus />
